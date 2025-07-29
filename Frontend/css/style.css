@@ -181,13 +181,12 @@
 
 .header-carousel .owl-carousel-item h5,
 .header-carousel .owl-carousel-item p {
-    font-size: 14px !important;
-    font-weight: 400 !important;
+    font-size: 22px !important;
+    font-weight: 600 !important;
 }
 
 .header-carousel .owl-carousel-item h1 {
-    font-size: 30px;
-    font-weight: 600;
+    font-weight: 800;
 }
 
 .header-carousel .owl-nav {
@@ -365,18 +364,17 @@
 
 /*** Testimonial ***/
 .testimonial-carousel .owl-item .testimonial-item {
-    position: relative;
     transition: .5s;
 }
 
 .testimonial-carousel .owl-item.center .testimonial-item {
     box-shadow: 0 0 45px rgba(0, 0, 0, .08);
-    animation: pulse 1s ease-out .5s;
 }
 
 .testimonial-carousel .owl-dots {
+    margin-top: 25px;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
 }
 
@@ -395,6 +393,53 @@
 .testimonial-carousel .owl-dot.active {
     background: var(--light);
     border-color: var(--primary);
+}
+
+/* Testimonial carousel navigation */
+.testimonial-carousel .owl-nav {
+    position: absolute;
+    top: 50%;
+    left: -50px;
+    right: -50px;
+    transform: translateY(-50%);
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+}
+
+.testimonial-carousel .owl-nav button {
+    width: 50px;
+    height: 50px;
+    background: var(--primary) !important;
+    border: none !important;
+    border-radius: 50%;
+    color: white;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: .3s;
+    pointer-events: auto;
+}
+
+.testimonial-carousel .owl-nav button:hover {
+    background: var(--secondary) !important;
+}
+
+/* Testimonial item styling */
+.testimonial-item {
+    padding: 20px;
+}
+
+.testimonial-text {
+    border: 1px solid #e9ecef;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.testimonial-text:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
 }
 
 

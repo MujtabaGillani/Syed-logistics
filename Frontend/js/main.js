@@ -90,25 +90,25 @@
     });
 
 
-    // Testimonials carousel
-    $(".testimonial-carousel").owlCarousel({
-        autoplay: false,
-        smartSpeed: 1000,
-        center: true,
-        dots: true,
-        loop: true,
-        responsive: {
-            0:{
-                items:1
-            },
-            768:{
-                items:2
-            },
-            992:{
-                items:3
-            }
-        }
-    });
+    // Testimonials carousel - Commented out to prevent conflicts with dynamic loading
+    // $(".testimonial-carousel").owlCarousel({
+    //     autoplay: false,
+    //     smartSpeed: 1000,
+    //     center: true,
+    //     dots: true,
+    //     loop: true,
+    //     responsive: {
+    //         0:{
+    //             items:1
+    //         },
+    //         768:{
+    //             items:2
+    //         },
+    //         992:{
+    //             items:3
+    //         }
+    //     }
+    // });
     
 })(jQuery);
 
