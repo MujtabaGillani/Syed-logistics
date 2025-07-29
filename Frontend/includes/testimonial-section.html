@@ -41,6 +41,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fetch reviews from API
     fetch('/api/reviews/get-all-reviews')
         .then(response => {
+            const carousel = document.getElementById('testimonial-carousel');
+            carousel.style.visibility = 'visible';
+            carousel.style.display = 'block';
+            carousel.style.opacity = '1';
+            
+            if (response.status === 204) {
+                // No reviews found
+                carousel.innerHTML = `
+                    <div class="text-center">
+                        <div class="mb-3">
+                            <i class="fa fa-comments fa-3x text-muted"></i>
+                        </div>
+                        <h5 class="text-muted">No Reviews Yet</h5>
+                        <p class="text-muted">Be the first to share your experience with our logistics services!</p>
+                    </div>
+                `;
+                return;
+            }
+            
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -100,10 +119,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }
             } else {
-                // Show message if no reviews found
                 carousel.innerHTML = `
                     <div class="text-center">
-                        <p class="text-muted">No reviews available at the moment.</p>
+                        <div class="mb-3">
+                            <i class="fa fa-comments fa-3x text-muted"></i>
+                        </div>
+                        <h5 class="text-muted">No Reviews Yet</h5>
+                        <p class="text-muted">Be the first to share your experience with our logistics services!</p>
                     </div>
                 `;
             }
