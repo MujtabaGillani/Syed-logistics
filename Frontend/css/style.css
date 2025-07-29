@@ -169,7 +169,7 @@
 
 .header-carousel .owl-carousel-item {
     position: relative;
-    min-height: 500px;
+    min-height: 100vh;
 }
 
 .header-carousel .owl-carousel-item img {
