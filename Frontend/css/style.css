@@ -163,43 +163,48 @@
 
 
 /*** Header ***/
-@media (max-width: 768px) {
-    .header-carousel .owl-carousel-item {
-        position: relative;
-        min-height: 500px;
-    }
-    
-    .header-carousel .owl-carousel-item img {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
+.header-carousel {
+    overflow: hidden;
+}
 
-    .header-carousel .owl-carousel-item h5,
-    .header-carousel .owl-carousel-item p {
-        font-size: 14px !important;
-        font-weight: 400 !important;
-    }
+.header-carousel .owl-carousel-item {
+    position: relative;
+    min-height: 500px;
+}
 
-    .header-carousel .owl-carousel-item h1 {
-        font-size: 30px;
-        font-weight: 600;
-    }
+.header-carousel .owl-carousel-item img {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.header-carousel .owl-carousel-item h5,
+.header-carousel .owl-carousel-item p {
+    font-size: 14px !important;
+    font-weight: 400 !important;
+}
+
+.header-carousel .owl-carousel-item h1 {
+    font-size: 30px;
+    font-weight: 600;
 }
 
 .header-carousel .owl-nav {
     position: absolute;
     top: 50%;
-    right: 8%;
+    left: 0;
+    right: 0;
     transform: translateY(-50%);
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 0 8%;
 }
 
 .header-carousel .owl-nav .owl-prev,
 .header-carousel .owl-nav .owl-next {
-    margin: 7px 0;
+    margin: 0;
     width: 45px;
     height: 45px;
     display: flex;
