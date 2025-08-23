@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Support - Syed Logistics{% endblock %}
+
+{% block content %}
+<!-- Page Header Start -->
+<div class="container-fluid page-header py-5" style="margin-bottom: 6rem;">
+    <div class="container py-5">
+        <h1 class="display-3 text-white mb-3 animated slideInDown">Support</h1>
+        <nav aria-label="breadcrumb animated slideInDown">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a class="text-white" href="/">Home</a></li>
+                <li class="breadcrumb-item"><a class="text-white" href="#">Pages</a></li>
+                <li class="breadcrumb-item text-white active" aria-current="page">Support</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+<!-- Page Header End -->
+
+<!-- Support Start -->
+<div class="container-fluid overflow-hidden py-5 px-lg-0">
+    <div class="container support py-5 px-lg-0">
+        <div class="row g-5 mx-lg-0">
+            <div class="col-lg-6 ps-lg-0 wow fadeInLeft" data-wow-delay="0.1s" style="min-height: 400px;">
+                <div class="position-relative h-100">
+                    <img class="position-absolute img-fluid w-100 h-100" src="{% static 'img/support.png' %}" style="object-fit: contain;" alt="">
+                </div>
+            </div>
+            <div class="col-lg-6 about-text wow fadeInUp" data-wow-delay="0.3s">
+                <h6 class="text-secondary text-uppercase mb-3">Support</h6>
+                <h1 class="mb-5">We're Here to Help</h1>
+                <p class="mb-5">At Syed Logistics, we understand that exceptional service doesn't end with delivery. Our dedicated support team is available 24/7 to assist you with any questions, concerns, or issues you may have. Whether you need help with tracking, documentation, or have a special request, we're committed to providing you with the support you deserve.</p>
+                <div class="row g-4 mb-5">
+                    <div class="col-sm-6 wow fadeIn" data-wow-delay="0.5s">
+                        <i class="fa fa-headphones fa-3x text-primary mb-3"></i>
+                        <h5>24/7 Support</h5>
+                        <p class="m-0">Round-the-clock assistance for all your logistics needs and concerns.</p>
+                    </div>
+                    <div class="col-sm-6 wow fadeIn" data-wow-delay="0.7s">
+                        <i class="fa fa-clock fa-3x text-primary mb-3"></i>
+                        <h5>Quick Response</h5>
+                        <p class="m-0">We guarantee a response within 2 hours for all support inquiries.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Support End -->
+
+<!-- Support Form Start -->
+<div class="container-xxl py-5">
+    <div class="container py-5">
+        <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
+            <h6 class="text-secondary text-uppercase mb-3">Get Support</h6>
+            <h1 class="mb-5">Submit Your Support Request</h1>
+        </div>
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="row g-3">
+                            <div class="col-12 col-sm-6">
+                                <input type="text" class="form-control border-0" id="name" name="name" placeholder="Your Name" style="height: 55px;" required>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <input type="email" class="form-control border-0" id="email" name="email" placeholder="Your Email" style="height: 55px;" required>
+                            </div>
+                            <div class="col-12">
+                                <input type="text" class="form-control border-0" id="mobile" name="mobile" placeholder="Your Contact Number" style="height: 55px;" required>
+                            </div>
+                            <div class="col-12">
+                                <textarea class="form-control border-0" id="issue" name="issue" placeholder="Describe your issue or concern..." rows="5" required></textarea>
+                            </div>
+                            <div class="col-12">
+                                <button class="btn btn-primary w-100 py-3" type="submit" onclick="submitSupportForm()">
+                                    <i class="fa fa-paper-plane me-2"></i>Submit Support Request
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Support Form End -->
+
+<!-- Contact Info Start -->
+<div class="container-fluid overflow-hidden py-5 px-lg-0">
+    <div class="container py-5 px-lg-0">
+        <div class="row g-5 mx-lg-0">
+            <div class="col-lg-6 wow fadeInUp" data-wow-delay="0.1s">
+                <h6 class="text-secondary text-uppercase mb-3">Contact Information</h6>
+                <h1 class="mb-5">Get in Touch</h1>
+                <p class="mb-5">Need immediate assistance? Here are our direct contact methods:</p>
+                <div class="d-flex align-items-center mb-4">
+                    <i class="fa fa-phone fa-2x flex-shrink-0 bg-primary p-3 text-white"></i>
+                    <div class="ps-4">
+                        <h6>Call us directly</h6>
+                        <h3 class="text-primary m-0">+92 329 8756 059</h3>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center mb-4">
+                    <i class="fa fa-envelope fa-2x flex-shrink-0 bg-primary p-3 text-white"></i>
+                    <div class="ps-4">
+                        <h6>Email us</h6>
+                        <h3 class="text-primary m-0">Hr@syedlogistic.com</h3>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <i class="fa fa-map-marker-alt fa-2x flex-shrink-0 bg-primary p-3 text-white"></i>
+                    <div class="ps-4">
+                        <h6>Visit our office</h6>
+                        <h3 class="text-primary m-0">Ohad Center LG B-1 30 Mall Road Lahore</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="row g-4 align-items-center">
+                    <div class="col-sm-6">
+                        <div class="bg-primary p-4 mb-4 wow fadeIn" data-wow-delay="0.3s">
+                            <i class="fa fa-users fa-2x text-white mb-3"></i>
+                            <h2 class="text-white mb-2">24/7</h2>
+                            <p class="text-white mb-0">Support Available</p>
+                        </div>
+                        <div class="bg-secondary p-4 wow fadeIn" data-wow-delay="0.5s">
+                            <i class="fa fa-clock fa-2x text-white mb-3"></i>
+                            <h5 class="text-white mb-2">with in</h5>
+                            <h2 class="text-white mb-2">45 minutes</h2>
+                            <p class="text-white mb-0">Response Time</p>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="bg-success p-4 wow fadeIn" data-wow-delay="0.7s">
+                            <i class="fa fa-star fa-2x text-white mb-3"></i>
+                            <h2 class="text-white mb-2">100%</h2>
+                            <p class="text-white mb-0">Satisfaction</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Contact Info End -->
+
+<script>
+function submitSupportForm() {
+    const name = document.getElementById('name').value;
+    const email = document.getElementById('email').value;
+    const mobile = document.getElementById('mobile').value;
+    const issue = document.getElementById('issue').value;
+    
+    if (!name || !email || !mobile || !issue) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+    
+    // Create the support message
+    const message = `*Support Request*\n\n*Name:* ${name}\n*Email:* ${email}\n*Contact:* ${mobile}\n*Issue:* ${issue}\n\nSubmitted via Syed Logistics Support Form`;
+    
+    // WhatsApp number
+    const whatsappNumber = '923298756059';
+    
+    // Create WhatsApp URL
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+    
+    // Open WhatsApp
+    window.open(whatsappUrl, '_blank');
+    
+    // Clear the form
+    document.getElementById('name').value = '';
+    document.getElementById('email').value = '';
+    document.getElementById('mobile').value = '';
+    document.getElementById('issue').value = '';
+    
+    // Show success message
+    alert('Support request submitted successfully! You will be redirected to WhatsApp.');
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Warehousing Services - Syed Logistics{% endblock %}
+
+{% block content %}
+<!-- Page Header Start -->
+<div class="container-fluid page-header py-5" style="margin-bottom: 6rem;">
+    <div class="container py-5">
+        <h1 class="display-3 text-white mb-3 animated slideInDown">Warehousing Services</h1>
+        <nav aria-label="breadcrumb animated slideInDown">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a class="text-white" href="/">Home</a></li>
+                <li class="breadcrumb-item"><a class="text-white" href="/service/">Services</a></li>
+                <li class="breadcrumb-item text-white active" aria-current="page">Warehousing</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+<!-- Page Header End -->
+
+<!-- Warehousing Hero Start -->
+<div class="container-fluid overflow-hidden py-5 px-lg-0">
+    <div class="container warehousing py-5 px-lg-0">
+        <div class="row g-5 mx-lg-0">
+            <div class="col-lg-6 ps-lg-0 wow fadeInLeft" data-wow-delay="0.1s" style="min-height: 400px;">
+                <div class="position-relative h-100">
+                    <img class="position-absolute img-fluid w-100 h-100" src="{% static 'img/service-6.jpg' %}" style="object-fit: cover;" alt="Warehousing Services">
+                </div>
+            </div>
+            <div class="col-lg-6 about-text wow fadeInUp" data-wow-delay="0.3s">
+                <h6 class="text-secondary text-uppercase mb-3">Warehousing</h6>
+                <h1 class="mb-5">Secure Storage Solutions</h1>
+                <p class="mb-5">Optimize your supply chain with our state-of-the-art warehousing facilities. We provide secure, climate-controlled storage solutions with advanced inventory management systems. Our strategically located warehouses offer easy access to major transportation hubs, ensuring quick turnaround times for your inventory needs.</p>
+                <div class="row g-4 mb-5">
+                    <div class="col-sm-6 wow fadeIn" data-wow-delay="0.5s">
+                        <i class="fa fa-warehouse fa-3x text-primary mb-3"></i>
+                        <h5>Modern Facilities</h5>
+                        <p class="m-0">State-of-the-art warehouses with advanced security systems</p>
+                    </div>
+                    <div class="col-sm-6 wow fadeIn" data-wow-delay="0.7s">
+                        <i class="fa fa-map-marker-alt fa-3x text-primary mb-3"></i>
+                        <h5>Strategic Locations</h5>
+                        <p class="m-0">Warehouses positioned near major ports and transportation hubs</p>
+                    </div>
+                </div>
+                <a href="/quote/" class="btn btn-primary py-3 px-5">Get Warehousing Quote</a>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Warehousing Hero End -->
+
+<!-- Services Features Start -->
+<div class="container-xxl py-5">
+    <div class="container py-5">
+        <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
+            <h6 class="text-secondary text-uppercase mb-3">Our Warehousing Solutions</h6>
+            <h1 class="mb-5">Comprehensive Storage Services</h1>
+        </div>
+        <div class="row g-4">
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-6.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-warehouse text-white"></i>
+                                </div>
+                                <h4 class="mb-0">General Storage</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Flexible storage solutions for various types of goods and materials</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-1.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-thermometer-half text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Cold Storage</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Temperature-controlled facilities for perishable goods and pharmaceuticals</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-2.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-shield-alt text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Hazardous Storage</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Specialized facilities for dangerous goods with full safety compliance</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.7s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-3.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-boxes text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Bonded Storage</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Customs-bonded warehouses for international trade operations</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Services Features End -->
+
+<!-- Warehousing Benefits Start -->
+<div class="container-fluid overflow-hidden py-5 px-lg-0" style="background-color: #f8f9fa;">
+    <div class="container py-5 px-lg-0">
+        <div class="row g-5 mx-lg-0">
+            <div class="col-lg-6 wow fadeInUp" data-wow-delay="0.1s">
+                <h6 class="text-secondary text-uppercase mb-3">Why Choose Our Warehousing</h6>
+                <h1 class="mb-5">Advantages of Our Storage Solutions</h1>
+                <p class="mb-5">Our warehousing services provide the foundation for efficient supply chain management. We offer flexible, secure, and cost-effective storage solutions that adapt to your business needs.</p>
+                <div class="d-flex align-items-center mb-4">
+                    <i class="fa fa-check fa-2x flex-shrink-0 bg-primary p-3 text-white me-3"></i>
+                    <div class="ps-4">
+                        <h6>24/7 Security</h6>
+                        <p class="m-0">Round-the-clock monitoring with CCTV and security personnel</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center mb-4">
+                    <i class="fa fa-check fa-2x flex-shrink-0 bg-primary p-3 text-white me-3"></i>
+                    <div class="ps-4">
+                        <h6>Inventory Management</h6>
+                        <p class="m-0">Advanced WMS for real-time tracking and management</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <i class="fa fa-check fa-2x flex-shrink-0 bg-primary p-3 text-white me-3"></i>
+                    <div class="ps-4">
+                        <h6>Flexible Solutions</h6>
+                        <p class="m-0">Short-term and long-term storage options available</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="row g-4 align-items-center">
+                    <div class="col-sm-6">
+                        <div class="bg-primary p-4 mb-4 wow fadeIn" data-wow-delay="0.3s">
+                            <i class="fa fa-warehouse fa-2x text-white mb-3"></i>
+                            <h2 class="text-white mb-2">50,000</h2>
+                            <p class="text-white mb-0">Sq Ft Storage</p>
+                        </div>
+                        <div class="bg-secondary p-4 wow fadeIn" data-wow-delay="0.5s">
+                            <i class="fa fa-map-marker-alt fa-2x text-white mb-3"></i>
+                            <h2 class="text-white mb-2">10+</h2>
+                            <p class="text-white mb-0">Warehouse Locations</p>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="bg-success p-4 wow fadeIn" data-wow-delay="0.7s">
+                            <i class="fa fa-clock fa-2x text-white mb-3"></i>
+                            <h2 class="text-white mb-2">24hrs</h2>
+                            <p class="text-white mb-0">Access Available</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Warehousing Benefits End -->
+
+<!-- Additional Services Start -->
+<div class="container-xxl py-5">
+    <div class="container py-5">
+        <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
+            <h6 class="text-secondary text-uppercase mb-3">Value-Added Services</h6>
+            <h1 class="mb-5">Beyond Basic Storage</h1>
+        </div>
+        <div class="row g-4">
+            <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                <i class="fa fa-boxes text-white"></i>
+                            </div>
+                            <h4 class="mb-0">Picking & Packing</h4>
+                        </div>
+                        <p class="text-body mb-0">Order fulfillment services with accurate picking and professional packing for safe transportation.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                <i class="fa fa-tags text-white"></i>
+                            </div>
+                            <h4 class="mb-0">Labeling & Marking</h4>
+                        </div>
+                        <p class="text-body mb-0">Professional labeling and marking services for inventory identification and compliance requirements.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                <i class="fa fa-chart-line text-white"></i>
+                            </div>
+                            <h4 class="mb-0">Inventory Reports</h4>
+                        </div>
+                        <p class="text-body mb-0">Regular inventory reports and analytics to help optimize your storage and supply chain operations.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Additional Services End -->
+
+<!-- CTA Section Start -->
+<div class="container-fluid overflow-hidden py-5 px-lg-0" style="background-color: #f8f9fa;">
+    <div class="container py-5 px-lg-0">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <div class="wow fadeInUp" data-wow-delay="0.1s">
+                    <h4 class="text-primary mb-3">Need Storage Solutions?</h4>
+                    <p class="mb-4">Get a competitive quote for your warehousing needs. Our experts are ready to help you choose the best solution.</p>
+                    <a href="/quote/" class="btn btn-primary py-3 px-5 me-3">
+                        <i class="fa fa-warehouse me-2"></i>Get Warehousing Quote
+                    </a>
+                    <a href="/contact/" class="btn btn-outline-primary py-3 px-5">
+                        <i class="fa fa-phone me-2"></i>Contact Us
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- CTA Section End -->
+
+{% endblock %}

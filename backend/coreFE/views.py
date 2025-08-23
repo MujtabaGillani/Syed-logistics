@@ -30,5 +30,36 @@ class TeamView(TemplateView):
 class TestimonialView(TemplateView):
     template_name = 'testimonial.html'
 
+class SupportView(TemplateView):
+    template_name = 'support.html'
+
+class TermsView(TemplateView):
+    template_name = 'terms-and-conditions.html'
+
 class NotFoundView(TemplateView):
     template_name = '404.html'
+
+# Service Views
+class AirFreightView(TemplateView):
+    template_name = 'services/airfrieght.html'
+
+class OceanFreightView(TemplateView):
+    template_name = 'services/oceanFrieght.html'
+
+class RoadFreightView(TemplateView):
+    template_name = 'services/roadFrieght.html'
+
+class TrainFreightView(TemplateView):
+    template_name = 'services/trainFrieght.html'
+
+class CustomClearanceView(TemplateView):
+    template_name = 'services/customClearance.html'
+
+class WarehouseView(TemplateView):
+    template_name = 'services/warehouse.html'
+
+class LogisticSolView(TemplateView):
+    template_name = 'services/LogisticSol.html'
+
+class SupplyChainView(TemplateView):
+    template_name = 'services/Supplychain.html'
