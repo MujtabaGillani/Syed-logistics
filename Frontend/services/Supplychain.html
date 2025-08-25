@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Supply Chain Management - Syed Logistics{% endblock %}
+
+{% block content %}
+<!-- Page Header Start -->
+<div class="container-fluid page-header py-5" style="margin-bottom: 6rem;">
+    <div class="container py-5">
+        <h1 class="display-3 text-white mb-3 animated slideInDown">Supply Chain Management</h1>
+        <nav aria-label="breadcrumb animated slideInDown">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a class="text-white" href="/">Home</a></li>
+                <li class="breadcrumb-item"><a class="text-white" href="/service/">Services</a></li>
+                <li class="breadcrumb-item text-white active" aria-current="page">Supply Chain</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+<!-- Page Header End -->
+
+<!-- Supply Chain Hero Start -->
+<div class="container-fluid overflow-hidden py-5 px-lg-0">
+    <div class="container supply-chain py-5 px-lg-0">
+        <div class="row g-5 mx-lg-0">
+            <div class="col-lg-6 ps-lg-0 wow fadeInLeft" data-wow-delay="0.1s" style="min-height: 400px;">
+                <div class="position-relative h-100">
+                    <img class="position-absolute img-fluid w-100 h-100" src="{% static 'img/service-2.jpg' %}" style="object-fit: cover;" alt="Supply Chain Management">
+                </div>
+            </div>
+            <div class="col-lg-6 about-text wow fadeInUp" data-wow-delay="0.3s">
+                <h6 class="text-secondary text-uppercase mb-3">Supply Chain</h6>
+                <h1 class="mb-5">End-to-End Supply Chain Excellence</h1>
+                <p class="mb-5">Master the complexity of modern supply chains with our comprehensive management solutions. We design, implement, and optimize supply chain networks that drive efficiency, reduce costs, and enhance customer satisfaction. From raw materials to final delivery, we ensure seamless coordination across all touchpoints.</p>
+                <div class="row g-4 mb-5">
+                    <div class="col-sm-6 wow fadeIn" data-wow-delay="0.5s">
+                        <i class="fa fa-network-wired fa-3x text-primary mb-3"></i>
+                        <h5>Network Design</h5>
+                        <p class="m-0">Optimized supply chain network planning and design</p>
+                    </div>
+                    <div class="col-sm-6 wow fadeIn" data-wow-delay="0.7s">
+                        <i class="fa fa-chart-line fa-3x text-primary mb-3"></i>
+                        <h5>Performance Optimization</h5>
+                        <p class="m-0">Continuous improvement and performance monitoring</p>
+                    </div>
+                </div>
+                <a href="/quote/" class="btn btn-primary py-3 px-5">Get Supply Chain Quote</a>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Supply Chain Hero End -->
+
+<!-- Services Features Start -->
+<div class="container-xxl py-5">
+    <div class="container py-5">
+        <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
+            <h6 class="text-secondary text-uppercase mb-3">Our Supply Chain Solutions</h6>
+            <h1 class="mb-5">Comprehensive Management Services</h1>
+        </div>
+        <div class="row g-4">
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-2.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-sitemap text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Network Design</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Strategic planning and optimization of supply chain networks</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-3.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-users text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Supplier Management</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Comprehensive supplier selection, evaluation, and relationship management</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-4.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-chart-bar text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Demand Planning</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Advanced forecasting and demand planning for optimal inventory levels</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.7s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-5.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-sync-alt text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Process Optimization</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Streamlining and optimizing supply chain processes for efficiency</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Services Features End -->
+
+<!-- Supply Chain Benefits Start -->
+<div class="container-fluid overflow-hidden py-5 px-lg-0" style="background-color: #f8f9fa;">
+    <div class="container py-5 px-lg-0">
+        <div class="row g-5 mx-lg-0">
+            <div class="col-lg-6 wow fadeInUp" data-wow-delay="0.1s">
+                <h6 class="text-secondary text-uppercase mb-3">Why Choose Our Supply Chain</h6>
+                <h1 class="mb-5">Advantages of Professional Management</h1>
+                <p class="mb-5">Our supply chain management services provide strategic advantages that drive business success. We help you build resilient, efficient, and cost-effective supply chains that adapt to market changes and customer demands.</p>
+                <div class="d-flex align-items-center mb-4">
+                    <i class="fa fa-check fa-2x flex-shrink-0 bg-primary p-3 text-white me-3"></i>
+                    <div class="ps-4">
+                        <h6>Cost Reduction</h6>
+                        <p class="m-0">Optimized processes and reduced waste lead to significant savings</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center mb-4">
+                    <i class="fa fa-check fa-2x flex-shrink-0 bg-primary p-3 text-white me-3"></i>
+                    <div class="ps-4">
+                        <h6>Improved Agility</h6>
+                        <p class="m-0">Faster response to market changes and customer demands</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <i class="fa fa-check fa-2x flex-shrink-0 bg-primary p-3 text-white me-3"></i>
+                    <div class="ps-4">
+                        <h6>Enhanced Visibility</h6>
+                        <p class="m-0">Complete transparency across the entire supply chain</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="row g-4 align-items-center">
+                    <div class="col-sm-6">
+                        <div class="bg-primary p-4 mb-4 wow fadeIn" data-wow-delay="0.3s">
+                            <i class="fa fa-percentage fa-2x text-white mb-3"></i>
+                            <h2 class="text-white mb-2">30%</h2>
+                            <p class="text-white mb-0">Cost Reduction</p>
+                        </div>
+                        <div class="bg-secondary p-4 wow fadeIn" data-wow-delay="0.5s">
+                            <i class="fa fa-clock fa-2x text-white mb-3"></i>
+                            <h2 class="text-white mb-2">50%</h2>
+                            <p class="text-white mb-0">Faster Response</p>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="bg-success p-4 wow fadeIn" data-wow-delay="0.7s">
+                            <i class="fa fa-chart-line fa-2x text-white mb-3"></i>
+                            <h2 class="text-white mb-2">95%</h2>
+                            <p class="text-white mb-0">Efficiency Gain</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Supply Chain Benefits End -->
+
+<!-- Industry Solutions Start -->
+<div class="container-xxl py-5">
+    <div class="container py-5">
+        <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
+            <h6 class="text-secondary text-uppercase mb-3">Industry Expertise</h6>
+            <h1 class="mb-5">Specialized Solutions for Every Sector</h1>
+        </div>
+        <div class="row g-4">
+            <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                <i class="fa fa-industry text-white"></i>
+                            </div>
+                            <h4 class="mb-0">Manufacturing</h4>
+                        </div>
+                        <p class="text-body mb-0">End-to-end supply chain solutions for manufacturing industries with just-in-time delivery and lean inventory management.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                <i class="fa fa-shopping-bag text-white"></i>
+                            </div>
+                            <h4 class="mb-0">Retail & E-commerce</h4>
+                        </div>
+                        <p class="text-body mb-0">Omnichannel supply chain solutions for retail businesses with fast fulfillment and inventory optimization.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                <i class="fa fa-pills text-white"></i>
+                            </div>
+                            <h4 class="mb-0">Healthcare & Pharma</h4>
+                        </div>
+                        <p class="text-body mb-0">Compliant supply chain solutions for healthcare with temperature control and regulatory adherence.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Industry Solutions End -->
+
+<!-- CTA Section Start -->
+<div class="container-fluid overflow-hidden py-5 px-lg-0" style="background-color: #f8f9fa;">
+    <div class="container py-5 px-lg-0">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <div class="wow fadeInUp" data-wow-delay="0.1s">
+                    <h4 class="text-primary mb-3">Ready to Transform Your Supply Chain?</h4>
+                    <p class="mb-4">Get a comprehensive quote for your supply chain management needs. Our experts are ready to help you build a world-class supply chain.</p>
+                    <a href="/quote/" class="btn btn-primary py-3 px-5 me-3">
+                        <i class="fa fa-sitemap me-2"></i>Get Supply Chain Quote
+                    </a>
+                    <a href="/contact/" class="btn btn-outline-primary py-3 px-5">
+                        <i class="fa fa-phone me-2"></i>Contact Us
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- CTA Section End -->
+
+{% endblock %}

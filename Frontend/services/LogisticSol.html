@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Logistics Solutions - Syed Logistics{% endblock %}
+
+{% block content %}
+<!-- Page Header Start -->
+<div class="container-fluid page-header py-5" style="margin-bottom: 6rem;">
+    <div class="container py-5">
+        <h1 class="display-3 text-white mb-3 animated slideInDown">Logistics Solutions</h1>
+        <nav aria-label="breadcrumb animated slideInDown">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a class="text-white" href="/">Home</a></li>
+                <li class="breadcrumb-item"><a class="text-white" href="/service/">Services</a></li>
+                <li class="breadcrumb-item text-white active" aria-current="page">Logistics Solutions</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+<!-- Page Header End -->
+
+<!-- Logistics Solutions Hero Start -->
+<div class="container-fluid overflow-hidden py-5 px-lg-0">
+    <div class="container logistics-solutions py-5 px-lg-0">
+        <div class="row g-5 mx-lg-0">
+            <div class="col-lg-6 ps-lg-0 wow fadeInLeft" data-wow-delay="0.1s" style="min-height: 400px;">
+                <div class="position-relative h-100">
+                    <img class="position-absolute img-fluid w-100 h-100" src="{% static 'img/service-1.jpg' %}" style="object-fit: cover;" alt="Logistics Solutions">
+                </div>
+            </div>
+            <div class="col-lg-6 about-text wow fadeInUp" data-wow-delay="0.3s">
+                <h6 class="text-secondary text-uppercase mb-3">Logistics Solutions</h6>
+                <h1 class="mb-5">End-to-End Supply Chain Management</h1>
+                <p class="mb-5">Transform your business operations with our comprehensive logistics solutions. We provide integrated supply chain management services that optimize every aspect of your logistics, from procurement to final delivery. Our technology-driven approach ensures visibility, efficiency, and cost savings across your entire supply chain.</p>
+                <div class="row g-4 mb-5">
+                    <div class="col-sm-6 wow fadeIn" data-wow-delay="0.5s">
+                        <i class="fa fa-network-wired fa-3x text-primary mb-3"></i>
+                        <h5>Integrated Solutions</h5>
+                        <p class="m-0">Seamless coordination across all logistics functions</p>
+                    </div>
+                    <div class="col-sm-6 wow fadeIn" data-wow-delay="0.7s">
+                        <i class="fa fa-chart-line fa-3x text-primary mb-3"></i>
+                        <h5>Performance Analytics</h5>
+                        <p class="m-0">Data-driven insights to optimize your operations</p>
+                    </div>
+                </div>
+                <a href="/quote/" class="btn btn-primary py-3 px-5">Get Logistics Quote</a>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Logistics Solutions Hero End -->
+
+<!-- Services Features Start -->
+<div class="container-xxl py-5">
+    <div class="container py-5">
+        <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
+            <h6 class="text-secondary text-uppercase mb-3">Our Logistics Solutions</h6>
+            <h1 class="mb-5">Comprehensive Supply Chain Services</h1>
+        </div>
+        <div class="row g-4">
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-1.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-shopping-cart text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Procurement</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Strategic sourcing and supplier management for optimal procurement</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-2.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-warehouse text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Inventory Management</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Advanced WMS for real-time inventory tracking and optimization</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-3.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-route text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Route Optimization</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">AI-powered route planning for maximum efficiency and cost savings</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.7s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-4.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-chart-bar text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Analytics & Reporting</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Comprehensive reporting and analytics for informed decision-making</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Services Features End -->
+
+<!-- Logistics Benefits Start -->
+<div class="container-fluid overflow-hidden py-5 px-lg-0" style="background-color: #f8f9fa;">
+    <div class="container py-5 px-lg-0">
+        <div class="row g-5 mx-lg-0">
+            <div class="col-lg-6 wow fadeInUp" data-wow-delay="0.1s">
+                <h6 class="text-secondary text-uppercase mb-3">Why Choose Our Solutions</h6>
+                <h1 class="mb-5">Advantages of Integrated Logistics</h1>
+                <p class="mb-5">Our integrated logistics solutions provide a competitive advantage by streamlining operations, reducing costs, and improving customer satisfaction. We leverage technology and expertise to deliver measurable results.</p>
+                <div class="d-flex align-items-center mb-4">
+                    <i class="fa fa-check fa-2x flex-shrink-0 bg-primary p-3 text-white me-3"></i>
+                    <div class="ps-4">
+                        <h6>Cost Reduction</h6>
+                        <p class="m-0">Optimized operations lead to significant cost savings</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center mb-4">
+                    <i class="fa fa-check fa-2x flex-shrink-0 bg-primary p-3 text-white me-3"></i>
+                    <div class="ps-4">
+                        <h6>Improved Efficiency</h6>
+                        <p class="m-0">Streamlined processes and better resource utilization</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <i class="fa fa-check fa-2x flex-shrink-0 bg-primary p-3 text-white me-3"></i>
+                    <div class="ps-4">
+                        <h6>Enhanced Visibility</h6>
+                        <p class="m-0">Real-time tracking and comprehensive reporting</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="row g-4 align-items-center">
+                    <div class="col-sm-6">
+                        <div class="bg-primary p-4 mb-4 wow fadeIn" data-wow-delay="0.3s">
+                            <i class="fa fa-percentage fa-2x text-white mb-3"></i>
+                            <h2 class="text-white mb-2">25%</h2>
+                            <p class="text-white mb-0">Cost Savings</p>
+                        </div>
+                        <div class="bg-secondary p-4 wow fadeIn" data-wow-delay="0.5s">
+                            <i class="fa fa-clock fa-2x text-white mb-3"></i>
+                            <h2 class="text-white mb-2">40%</h2>
+                            <p class="text-white mb-0">Faster Delivery</p>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="bg-success p-4 wow fadeIn" data-wow-delay="0.7s">
+                            <i class="fa fa-chart-line fa-2x text-white mb-3"></i>
+                            <h2 class="text-white mb-2">99%</h2>
+                            <p class="text-white mb-0">Accuracy Rate</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Logistics Benefits End -->
+
+<!-- Technology Solutions Start -->
+<div class="container-xxl py-5">
+    <div class="container py-5">
+        <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
+            <h6 class="text-secondary text-uppercase mb-3">Technology Integration</h6>
+            <h1 class="mb-5">Smart Logistics Technology</h1>
+        </div>
+        <div class="row g-4">
+            <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                <i class="fa fa-mobile-alt text-white"></i>
+                            </div>
+                            <h4 class="mb-0">Mobile Apps</h4>
+                        </div>
+                        <p class="text-body mb-0">User-friendly mobile applications for drivers, warehouse staff, and customers with real-time updates and notifications.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                <i class="fa fa-cloud text-white"></i>
+                            </div>
+                            <h4 class="mb-0">Cloud Platform</h4>
+                        </div>
+                        <p class="text-body mb-0">Secure cloud-based logistics management platform accessible from anywhere with real-time data synchronization.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                <i class="fa fa-robot text-white"></i>
+                            </div>
+                            <h4 class="mb-0">AI & Automation</h4>
+                        </div>
+                        <p class="text-body mb-0">Artificial intelligence and automation for predictive analytics, route optimization, and intelligent decision-making.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Technology Solutions End -->
+
+<!-- CTA Section Start -->
+<div class="container-fluid overflow-hidden py-5 px-lg-0" style="background-color: #f8f9fa;">
+    <div class="container py-5 px-lg-0">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <div class="wow fadeInUp" data-wow-delay="0.1s">
+                    <h4 class="text-primary mb-3">Ready to Optimize Your Logistics?</h4>
+                    <p class="mb-4">Get a comprehensive quote for your logistics solutions. Our experts are ready to help you transform your supply chain.</p>
+                    <a href="/quote/" class="btn btn-primary py-3 px-5 me-3">
+                        <i class="fa fa-chart-line me-2"></i>Get Logistics Quote
+                    </a>
+                    <a href="/contact/" class="btn btn-outline-primary py-3 px-5">
+                        <i class="fa fa-phone me-2"></i>Contact Us
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- CTA Section End -->
+
+{% endblock %}

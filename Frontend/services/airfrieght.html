@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Air Freight Services - Syed Logistics{% endblock %}
+
+{% block content %}
+<!-- Page Header Start -->
+<div class="container-fluid page-header py-5" style="margin-bottom: 6rem;">
+    <div class="container py-5">
+        <h1 class="display-3 text-white mb-3 animated slideInDown">Air Freight Services</h1>
+        <nav aria-label="breadcrumb animated slideInDown">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a class="text-white" href="/">Home</a></li>
+                <li class="breadcrumb-item"><a class="text-white" href="/service/">Services</a></li>
+                <li class="breadcrumb-item text-white active" aria-current="page">Air Freight</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+<!-- Page Header End -->
+
+<!-- Air Freight Hero Start -->
+<div class="container-fluid overflow-hidden py-5 px-lg-0">
+    <div class="container air-freight py-5 px-lg-0">
+        <div class="row g-5 mx-lg-0">
+            <div class="col-lg-6 ps-lg-0 wow fadeInLeft" data-wow-delay="0.1s" style="min-height: 400px;">
+                <div class="position-relative h-100">
+                    <img class="position-absolute img-fluid w-100 h-100" src="{% static 'img/service-1.jpg' %}" style="object-fit: cover;" alt="Air Freight Services">
+                </div>
+            </div>
+            <div class="col-lg-6 about-text wow fadeInUp" data-wow-delay="0.3s">
+                <h6 class="text-secondary text-uppercase mb-3">Air Freight</h6>
+                <h1 class="mb-5">Swift Global Air Cargo Solutions</h1>
+                <p class="mb-5">Experience lightning-fast international shipping with our premium air freight services. We connect you to over 200+ destinations worldwide with guaranteed delivery times and real-time tracking. Whether it's urgent documents, high-value electronics, or time-sensitive cargo, our air freight solutions ensure your shipments reach their destination in record time.</p>
+                <div class="row g-4 mb-5">
+                    <div class="col-sm-6 wow fadeIn" data-wow-delay="0.5s">
+                        <i class="fa fa-plane fa-3x text-primary mb-3"></i>
+                        <h5>Global Network</h5>
+                        <p class="m-0">Access to 200+ international airports with daily departures</p>
+                    </div>
+                    <div class="col-sm-6 wow fadeIn" data-wow-delay="0.7s">
+                        <i class="fa fa-clock fa-3x text-primary mb-3"></i>
+                        <h5>Express Delivery</h5>
+                        <p class="m-0">Same-day and next-day delivery options available</p>
+                    </div>
+                </div>
+                <a href="/quote/" class="btn btn-primary py-3 px-5">Get Air Freight Quote</a>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Air Freight Hero End -->
+
+<!-- Services Features Start -->
+<div class="container-xxl py-5">
+    <div class="container py-5">
+        <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
+            <h6 class="text-secondary text-uppercase mb-3">Our Air Freight Solutions</h6>
+            <h1 class="mb-5">Comprehensive Air Cargo Services</h1>
+        </div>
+        <div class="row g-4">
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-1.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-plane text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Express Air Freight</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Priority handling with guaranteed delivery times for urgent shipments</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-2.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-box text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Consolidated Cargo</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Cost-effective solutions for smaller shipments through cargo consolidation</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-3.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-shield-alt text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Dangerous Goods</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Specialized handling for hazardous materials with full compliance</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.7s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="position-relative overflow-hidden">
+                        <img class="img-fluid" src="{% static 'img/service-4.jpg' %}" alt="">
+                    </div>
+                    <div class="p-4 mt-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                    <i class="fa fa-thermometer-half text-white"></i>
+                                </div>
+                                <h4 class="mb-0">Temperature Controlled</h4>
+                            </div>
+                        </div>
+                        <p class="text-body mb-0">Climate-controlled shipping for pharmaceuticals and perishables</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Services Features End -->
+
+<!-- Air Freight Benefits Start -->
+<div class="container-fluid overflow-hidden py-5 px-lg-0" style="background-color: #f8f9fa;">
+    <div class="container py-5 px-lg-0">
+        <div class="row g-5 mx-lg-0">
+            <div class="col-lg-6 wow fadeInUp" data-wow-delay="0.1s">
+                <h6 class="text-secondary text-uppercase mb-3">Why Choose Our Air Freight</h6>
+                <h1 class="mb-5">Advantages of Air Cargo Shipping</h1>
+                <p class="mb-5">Air freight offers unparalleled speed and reliability for international shipments. Our expertise ensures your cargo receives the highest level of care and attention throughout the journey.</p>
+                <div class="d-flex align-items-center mb-4">
+                    <i class="fa fa-check fa-2x flex-shrink-0 bg-primary p-3 text-white me-3"></i>
+                    <div class="ps-4">
+                        <h6>Fastest Delivery Times</h6>
+                        <p class="m-0">Same-day and next-day delivery options for urgent shipments</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center mb-4">
+                    <i class="fa fa-check fa-2x flex-shrink-0 bg-primary p-3 text-white me-3"></i>
+                    <div class="ps-4">
+                        <h6>Global Coverage</h6>
+                        <p class="m-0">Access to 200+ international airports with daily departures</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <i class="fa fa-check fa-2x flex-shrink-0 bg-primary p-3 text-white me-3"></i>
+                    <div class="ps-4">
+                        <h6>Real-time Tracking</h6>
+                        <p class="m-0">24/7 visibility of your shipment from pickup to delivery</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="row g-4 align-items-center">
+                    <div class="col-sm-6">
+                        <div class="bg-primary p-4 mb-4 wow fadeIn" data-wow-delay="0.3s">
+                            <i class="fa fa-plane fa-2x text-white mb-3"></i>
+                            <h2 class="text-white mb-2">24hrs</h2>
+                            <p class="text-white mb-0">Express Delivery</p>
+                        </div>
+                        <div class="bg-secondary p-4 wow fadeIn" data-wow-delay="0.5s">
+                            <i class="fa fa-globe fa-2x text-white mb-3"></i>
+                            <h2 class="text-white mb-2">200+</h2>
+                            <p class="text-white mb-0">Destinations</p>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="bg-success p-4 wow fadeIn" data-wow-delay="0.7s">
+                            <i class="fa fa-shield-alt fa-2x text-white mb-3"></i>
+                            <h2 class="text-white mb-2">100%</h2>
+                            <p class="text-white mb-0">Secure Handling</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Air Freight Benefits End -->
+
+<!-- Industries Served Start -->
+<div class="container-xxl py-5">
+    <div class="container py-5">
+        <div class="text-center mx-auto wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
+            <h6 class="text-secondary text-uppercase mb-3">Industries We Serve</h6>
+            <h1 class="mb-5">Specialized Air Freight for Every Sector</h1>
+        </div>
+        <div class="row g-4">
+            <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                <i class="fa fa-pills text-white"></i>
+                            </div>
+                            <h4 class="mb-0">Pharmaceuticals</h4>
+                        </div>
+                        <p class="text-body mb-0">Temperature-controlled shipping for medicines, vaccines, and medical supplies with full regulatory compliance.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                <i class="fa fa-laptop text-white"></i>
+                            </div>
+                            <h4 class="mb-0">Electronics</h4>
+                        </div>
+                        <p class="text-body mb-0">Secure handling of high-value electronics, computers, and sensitive equipment with insurance coverage.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
+                <div class="service-item rounded overflow-hidden">
+                    <div class="p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="btn-lg-square bg-primary rounded-circle me-3">
+                                <i class="fa fa-tshirt text-white"></i>
+                            </div>
+                            <h4 class="mb-0">Fashion & Textiles</h4>
+                        </div>
+                        <p class="text-body mb-0">Fast delivery for seasonal fashion items, textiles, and accessories to meet market demands.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Industries Served End -->
+
+<!-- CTA Section Start -->
+<div class="container-fluid overflow-hidden py-5 px-lg-0" style="background-color: #f8f9fa;">
+    <div class="container py-5 px-lg-0">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <div class="wow fadeInUp" data-wow-delay="0.1s">
+                    <h4 class="text-primary mb-3">Ready to Ship by Air?</h4>
+                    <p class="mb-4">Get a competitive quote for your air freight needs. Our experts are ready to help you choose the best solution.</p>
+                    <a href="/quote/" class="btn btn-primary py-3 px-5 me-3">
+                        <i class="fa fa-plane me-2"></i>Get Air Freight Quote
+                    </a>
+                    <a href="/contact/" class="btn btn-outline-primary py-3 px-5">
+                        <i class="fa fa-phone me-2"></i>Contact Us
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- CTA Section End -->
+
+{% endblock %}
