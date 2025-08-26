@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.views.generic import TemplateView
+from django.http import JsonResponse
 
 # Create your views here.
 
@@ -63,3 +64,12 @@ class LogisticSolView(TemplateView):
 
 class SupplyChainView(TemplateView):
     template_name = 'services/Supplychain.html'
+
+# Health check view for Docker
+def health_check(request):
+    """Health check endpoint for Docker monitoring"""
+    return JsonResponse({
+        "status": "healthy",
+        "service": "Syed Logistics",
+        "timestamp": "2025-08-25T08:00:00Z"
+    })
