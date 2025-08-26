@@ -4,7 +4,8 @@ from .views import (
     PriceView, QuoteView, ServiceView, TeamView,
     TestimonialView, SupportView, TermsView, NotFoundView,
     AirFreightView, OceanFreightView, RoadFreightView, TrainFreightView,
-    CustomClearanceView, WarehouseView, LogisticSolView, SupplyChainView
+    CustomClearanceView, WarehouseView, LogisticSolView, SupplyChainView,
+    health_check
 )
 
 urlpatterns = [
@@ -30,4 +31,7 @@ urlpatterns = [
     path('services/warehouse/', WarehouseView.as_view(), name='warehouse'),
     path('services/logistics-solutions/', LogisticSolView.as_view(), name='logistics_solutions'),
     path('services/supply-chain/', SupplyChainView.as_view(), name='supply_chain'),
+
+    # Health check endpoint
+    path('health/', health_check, name='health'),
 ]
