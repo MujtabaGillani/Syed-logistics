@@ -49,6 +49,9 @@ RUN addgroup --gid 1001 appuser \
 # Create staticfiles directory with correct ownership
 RUN mkdir -p /app/staticfiles && chown -R appuser:appuser /app/staticfiles
 
+# Create data directory with proper owner
+RUN mkdir -p /app/data && chown -R appuser:appuser /app/data
+
 # Switch to non-root user
 USER appuser
 
