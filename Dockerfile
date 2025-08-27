@@ -39,6 +39,7 @@ RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
 # Copy project files
 COPY backend/ .
+COPY Frontend /app/Frontend/
 COPY scripts/ /scripts/
 RUN chmod +x /scripts/*.sh
 
