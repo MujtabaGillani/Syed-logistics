@@ -33,20 +33,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
-
 # Copy wheels and install
 COPY --from=builder /wheels /wheels
 RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
 # Copy project files
 COPY backend/ .
+COPY Frontend /app/Frontend/
 COPY scripts/ /scripts/
 RUN chmod +x /scripts/*.sh
 
-# Create staticfiles directory
-RUN mkdir -p /app/staticfiles && chown -R appuser:appgroup /app
+# Create non-root user and group
+RUN addgroup --gid 1001 appuser \
+ && adduser --uid 1001 --gid 1001 --disabled-password --gecos "" appuser
+
+# Create staticfiles directory with correct ownership
+RUN mkdir -p /app/staticfiles && chown -R appuser:appuser /app/staticfiles
+
+# Create data directory with proper owner
+RUN mkdir -p /app/data && chown -R appuser:appuser /app/data
 
 # Switch to non-root user
 USER appuser

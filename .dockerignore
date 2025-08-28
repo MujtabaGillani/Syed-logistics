@@ -61,6 +61,3 @@ docker-compose.yml
 # Documentation
 README.md
 *.md
-
-# Frontend (if not needed in backend container)
-Frontend/
