@@ -1,8 +1,17 @@
 from django.shortcuts import render
 from django.views.generic import TemplateView
 from django.http import JsonResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 # Create your views here.
+
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class CsrfTemplateView(TemplateView):
+    """TemplateView that guarantees the ``csrftoken`` cookie is set so the
+    finance management pages can send it on POST/PUT/PATCH/DELETE requests."""
+    pass
 
 class HomeView(TemplateView):
     template_name = 'index.html'
@@ -64,6 +73,19 @@ class LogisticSolView(TemplateView):
 
 class SupplyChainView(TemplateView):
     template_name = 'services/Supplychain.html'
+
+# Finance / management dashboard pages
+class DashboardView(CsrfTemplateView):
+    template_name = 'finance/dashboard.html'
+
+class CustomersView(CsrfTemplateView):
+    template_name = 'finance/customers.html'
+
+class GeneralVouchersView(CsrfTemplateView):
+    template_name = 'finance/general-vouchers.html'
+
+class OfficeExpensesView(CsrfTemplateView):
+    template_name = 'finance/office-expenses.html'
 
 # Health check view for Docker
 def health_check(request):

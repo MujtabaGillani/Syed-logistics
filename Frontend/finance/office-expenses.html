@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Office Expenses - Syed Logistic{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/finance.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="fin-wrap">
+    <div class="container">
+        <div class="fin-page-head">
+            <div>
+                <h1>Office Expenses</h1>
+                <div class="text-muted">Record operating expenses with optional receipt images.</div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/dashboard/" class="btn btn-outline-secondary"><i class="fa fa-chart-line me-2"></i>Dashboard</a>
+                <button class="btn btn-primary" id="btnAddExpense"><i class="fa fa-plus me-2"></i>Add Expense</button>
+            </div>
+        </div>
+
+        <div class="fin-card">
+            <div class="fin-toolbar">
+                <div>
+                    <label class="form-label">From (date)</label>
+                    <input type="date" class="form-control" id="fFrom">
+                </div>
+                <div>
+                    <label class="form-label">To (date)</label>
+                    <input type="date" class="form-control" id="fTo">
+                </div>
+                <div>
+                    <label class="form-label">Type</label>
+                    <select class="form-select" id="fType">
+                        <option value="">All types</option>
+                        <option value="rent">Rent</option>
+                        <option value="utilities">Utilities</option>
+                        <option value="salary">Salary</option>
+                        <option value="supplies">Supplies</option>
+                        <option value="maintenance">Maintenance</option>
+                        <option value="travel">Travel</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" id="fSearch" placeholder="Expense name">
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary" id="btnReset"><i class="fa fa-rotate-left me-1"></i>Reset</button>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3" id="expenseSummary"></div>
+
+            <div class="table-responsive">
+                <table class="fin-table">
+                    <thead>
+                        <tr>
+                            <th>Receipt</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th class="num">Amount</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expenseRows">
+                        <tr><td colspan="7" class="fin-empty">Loading…</td></tr>
+                    </tbody>
+                    <tfoot id="expenseFoot"></tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Expense modal -->
+<div class="modal fade" id="expenseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form id="expenseForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="expenseModalTitle">Add Expense</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="expenseId">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="eName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="eType" required>
+                                <option value="rent">Rent</option>
+                                <option value="utilities">Utilities</option>
+                                <option value="salary">Salary</option>
+                                <option value="supplies">Supplies</option>
+                                <option value="maintenance">Maintenance</option>
+                                <option value="travel">Travel</option>
+                                <option value="other" selected>Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Amount (Rs) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="eAmount" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="eDate" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Time</label>
+                            <input type="time" class="form-control" id="eTime">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Receipt Image</label>
+                            <input type="file" class="form-control" id="eImage" accept="image/*">
+                            <div id="eCurrentImage" class="mt-2"></div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" id="eNotes" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveExpense">Save Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/finance.js' %}"></script>
+<script>
+(function () {
+    var F = window.Finance;
+    var modal = new bootstrap.Modal(document.getElementById('expenseModal'));
+    var rows = document.getElementById('expenseRows');
+    var filters = { from: '', to: '', type: '', search: '' };
+
+    function load() {
+        rows.innerHTML = '<tr><td colspan="7" class="fin-empty">Loading…</td></tr>';
+        F.get('expenses/', filters).then(function (data) {
+            data = data || [];
+            renderSummary(data);
+            if (!data.length) {
+                rows.innerHTML = '<tr><td colspan="7" class="fin-empty">No expenses match the current filters.</td></tr>';
+                return;
+            }
+            rows.innerHTML = data.map(function (x) {
+                var thumb = x.image
+                    ? '<a href="' + F.escapeHtml(x.image) + '" target="_blank"><img src="' + F.escapeHtml(x.image) + '" class="fin-receipt-thumb"></a>'
+                    : '<span class="text-muted">—</span>';
+                return '<tr>'
+                    + '<td>' + thumb + '</td>'
+                    + '<td><strong>' + F.escapeHtml(x.name) + '</strong></td>'
+                    + '<td><span class="fin-badge other">' + F.escapeHtml(x.expense_type_display) + '</span></td>'
+                    + '<td>' + F.date(x.date) + '</td>'
+                    + '<td>' + (x.time ? F.escapeHtml(x.time.slice(0, 5)) : '—') + '</td>'
+                    + '<td class="num">' + F.money(x.amount) + '</td>'
+                    + '<td class="text-end">'
+                    + '<button class="btn btn-sm btn-outline-primary me-1" data-edit="' + x.id + '"><i class="fa fa-pen"></i></button>'
+                    + '<button class="btn btn-sm btn-outline-danger" data-del="' + x.id + '"><i class="fa fa-trash"></i></button>'
+                    + '</td></tr>';
+            }).join('');
+        }).catch(function () {
+            rows.innerHTML = '<tr><td colspan="7" class="fin-empty text-danger">Failed to load expenses.</td></tr>';
+        });
+    }
+
+    function renderSummary(data) {
+        var total = data.reduce(function (s, x) { return s + Number(x.amount); }, 0);
+        document.getElementById('expenseSummary').innerHTML =
+            '<div class="col-6 col-lg-3"><div class="fin-kpi"><div class="label">Expenses shown</div><div class="value">' + data.length + '</div></div></div>'
+            + '<div class="col-6 col-lg-3"><div class="fin-kpi is-expense"><div class="label">Total (filtered)</div><div class="value">' + F.money(total) + '</div></div></div>';
+        document.getElementById('expenseFoot').innerHTML =
+            '<tr><th colspan="5" class="text-end">Total (filtered)</th><th class="num">' + F.money(total) + '</th><th></th></tr>';
+    }
+
+    function openModal(x) {
+        document.getElementById('expenseForm').reset();
+        document.getElementById('eCurrentImage').innerHTML = '';
+        if (x) {
+            document.getElementById('expenseModalTitle').textContent = 'Edit Expense';
+            document.getElementById('expenseId').value = x.id;
+            document.getElementById('eName').value = x.name;
+            document.getElementById('eType').value = x.expense_type;
+            document.getElementById('eAmount').value = x.amount;
+            document.getElementById('eDate').value = x.date;
+            document.getElementById('eTime').value = x.time ? x.time.slice(0, 5) : '';
+            document.getElementById('eNotes').value = x.notes || '';
+            if (x.image) {
+                document.getElementById('eCurrentImage').innerHTML =
+                    '<a href="' + F.escapeHtml(x.image) + '" target="_blank"><img src="' + F.escapeHtml(x.image) + '" class="fin-receipt-thumb"></a>'
+                    + '<span class="text-muted ms-2">Current receipt — choose a file to replace.</span>';
+            }
+        } else {
+            document.getElementById('expenseModalTitle').textContent = 'Add Expense';
+            document.getElementById('expenseId').value = '';
+        }
+        modal.show();
+    }
+
+    document.getElementById('btnAddExpense').addEventListener('click', function () { openModal(null); });
+
+    document.getElementById('expenseForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var id = document.getElementById('expenseId').value;
+        var fd = new FormData();
+        fd.append('name', document.getElementById('eName').value.trim());
+        fd.append('expense_type', document.getElementById('eType').value);
+        fd.append('amount', document.getElementById('eAmount').value);
+        fd.append('date', document.getElementById('eDate').value);
+        var time = document.getElementById('eTime').value;
+        if (time) { fd.append('time', time); }
+        fd.append('notes', document.getElementById('eNotes').value.trim());
+        var imgFile = document.getElementById('eImage').files[0];
+        if (imgFile) { fd.append('image', imgFile); }
+
+        var btn = document.getElementById('btnSaveExpense');
+        btn.disabled = true;
+        // PATCH on edit (so an unchanged receipt image is left intact); POST on create.
+        var op = id ? patchForm('expenses/' + id + '/', fd) : F.postForm('expenses/', fd);
+        op.then(function () {
+            modal.hide();
+            F.toast(id ? 'Expense updated.' : 'Expense added.');
+            load();
+        }).catch(function (err) {
+            F.toast(F.errorText(err), 'danger');
+        }).finally(function () { btn.disabled = false; });
+    });
+
+    // PATCH with multipart (Finance helper only exposes post/put form variants).
+    function patchForm(path, form) {
+        return fetch('/api/finance/' + path, {
+            method: 'PATCH',
+            headers: { 'X-CSRFToken': F.getCookie('csrftoken') },
+            body: form
+        }).then(function (res) {
+            if (res.status === 204) { return null; }
+            return res.json().then(function (data) {
+                if (!res.ok) { var e = new Error('fail'); e.status = res.status; e.data = data; throw e; }
+                return data;
+            });
+        });
+    }
+
+    rows.addEventListener('click', function (e) {
+        var editBtn = e.target.closest('[data-edit]');
+        var delBtn = e.target.closest('[data-del]');
+        if (editBtn) {
+            F.get('expenses/' + editBtn.getAttribute('data-edit') + '/').then(openModal);
+        } else if (delBtn) {
+            var id = delBtn.getAttribute('data-del');
+            if (confirm('Delete this expense? This cannot be undone.')) {
+                F.del('expenses/' + id + '/').then(function () {
+                    F.toast('Expense deleted.');
+                    load();
+                }).catch(function (err) { F.toast(F.errorText(err), 'danger'); });
+            }
+        }
+    });
+
+    document.getElementById('fFrom').addEventListener('change', function (e) { filters.from = e.target.value; load(); });
+    document.getElementById('fTo').addEventListener('change', function (e) { filters.to = e.target.value; load(); });
+    document.getElementById('fType').addEventListener('change', function (e) { filters.type = e.target.value; load(); });
+    var t;
+    document.getElementById('fSearch').addEventListener('input', function (e) {
+        clearTimeout(t);
+        t = setTimeout(function () { filters.search = e.target.value.trim(); load(); }, 300);
+    });
+    document.getElementById('btnReset').addEventListener('click', function () {
+        filters = { from: '', to: '', type: '', search: '' };
+        ['fFrom', 'fTo', 'fSearch'].forEach(function (id) { document.getElementById(id).value = ''; });
+        document.getElementById('fType').value = '';
+        load();
+    });
+
+    load();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Customers - Syed Logistic{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/finance.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="fin-wrap">
+    <div class="container">
+        <div class="fin-page-head">
+            <div>
+                <h1>Customers</h1>
+                <div class="text-muted">Manage your customer directory — one customer can hold many vouchers.</div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/dashboard/" class="btn btn-outline-secondary"><i class="fa fa-chart-line me-2"></i>Dashboard</a>
+                <button class="btn btn-primary" id="btnAddCustomer"><i class="fa fa-plus me-2"></i>Add Customer</button>
+            </div>
+        </div>
+
+        <div class="fin-card">
+            <div class="fin-toolbar">
+                <div>
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" id="fSearch" placeholder="Name, CNIC, contact, city…">
+                </div>
+                <div>
+                    <label class="form-label">Category</label>
+                    <select class="form-select" id="fCategory">
+                        <option value="">All categories</option>
+                        <option value="retail">Retail</option>
+                        <option value="wholesale">Wholesale</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary" id="btnReset"><i class="fa fa-rotate-left me-1"></i>Reset</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="fin-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>CNIC</th>
+                            <th>Contact</th>
+                            <th>City</th>
+                            <th>Category</th>
+                            <th class="num">Vouchers</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customerRows">
+                        <tr><td colspan="7" class="fin-empty">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer modal -->
+<div class="modal fade" id="customerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form id="customerForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="customerModalTitle">Add Customer</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="customerId">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">First Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="cName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Surname <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="cSurname" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">CNIC <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="cCnic" placeholder="00000-0000000-0" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Contact Number <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="cContact" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">City <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="cCity" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Customer Category <span class="text-danger">*</span></label>
+                            <select class="form-select" id="cCategory" required>
+                                <option value="retail">Retail</option>
+                                <option value="wholesale">Wholesale</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Address <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="cAddress" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="cEmail">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Additional Info (optional)</label>
+                            <div id="metaRows"></div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="btnAddMeta">
+                                <i class="fa fa-plus me-1"></i>Add field
+                            </button>
+                            <div class="form-text">Stored as structured JSON metadata (key / value pairs).</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveCustomer">Save Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/finance.js' %}"></script>
+<script>
+(function () {
+    var F = window.Finance;
+    var modalEl = document.getElementById('customerModal');
+    var modal = new bootstrap.Modal(modalEl);
+    var rows = document.getElementById('customerRows');
+    var metaRows = document.getElementById('metaRows');
+
+    var filters = { search: '', category: '' };
+
+    function badge(cat) {
+        return '<span class="fin-badge ' + F.escapeHtml(cat) + '">' + F.escapeHtml(cat) + '</span>';
+    }
+
+    function load() {
+        rows.innerHTML = '<tr><td colspan="7" class="fin-empty">Loading…</td></tr>';
+        F.get('customers/', filters).then(function (data) {
+            if (!data || !data.length) {
+                rows.innerHTML = '<tr><td colspan="7" class="fin-empty">No customers found. Click “Add Customer” to create one.</td></tr>';
+                return;
+            }
+            rows.innerHTML = data.map(function (c) {
+                return '<tr>'
+                    + '<td><strong>' + F.escapeHtml(c.full_name) + '</strong>'
+                    + (c.email ? '<br><small class="text-muted">' + F.escapeHtml(c.email) + '</small>' : '') + '</td>'
+                    + '<td>' + F.escapeHtml(c.cnic) + '</td>'
+                    + '<td>' + F.escapeHtml(c.contact_number) + '</td>'
+                    + '<td>' + F.escapeHtml(c.city) + '</td>'
+                    + '<td>' + badge(c.customer_category) + '</td>'
+                    + '<td class="num">' + c.voucher_count + '</td>'
+                    + '<td class="text-end">'
+                    + '<button class="btn btn-sm btn-outline-primary me-1" data-edit="' + c.id + '"><i class="fa fa-pen"></i></button>'
+                    + '<button class="btn btn-sm btn-outline-danger" data-del="' + c.id + '"><i class="fa fa-trash"></i></button>'
+                    + '</td></tr>';
+            }).join('');
+        }).catch(function () {
+            rows.innerHTML = '<tr><td colspan="7" class="fin-empty text-danger">Failed to load customers.</td></tr>';
+        });
+    }
+
+    // ---- meta_data key/value editor ----
+    function addMetaRow(key, value) {
+        var div = document.createElement('div');
+        div.className = 'row g-2 mb-2 meta-row';
+        div.innerHTML =
+            '<div class="col-5"><input type="text" class="form-control form-control-sm meta-key" placeholder="Key" value="' + F.escapeHtml(key || '') + '"></div>'
+            + '<div class="col-6"><input type="text" class="form-control form-control-sm meta-val" placeholder="Value" value="' + F.escapeHtml(value || '') + '"></div>'
+            + '<div class="col-1"><button type="button" class="btn btn-sm btn-outline-danger meta-del"><i class="fa fa-times"></i></button></div>';
+        metaRows.appendChild(div);
+    }
+    function collectMeta() {
+        var meta = {};
+        metaRows.querySelectorAll('.meta-row').forEach(function (r) {
+            var k = r.querySelector('.meta-key').value.trim();
+            var v = r.querySelector('.meta-val').value.trim();
+            if (k) { meta[k] = v; }
+        });
+        return meta;
+    }
+    metaRows.addEventListener('click', function (e) {
+        var btn = e.target.closest('.meta-del');
+        if (btn) { btn.closest('.meta-row').remove(); }
+    });
+    document.getElementById('btnAddMeta').addEventListener('click', function () { addMetaRow('', ''); });
+
+    function openModal(customer) {
+        document.getElementById('customerForm').reset();
+        metaRows.innerHTML = '';
+        if (customer) {
+            document.getElementById('customerModalTitle').textContent = 'Edit Customer';
+            document.getElementById('customerId').value = customer.id;
+            document.getElementById('cName').value = customer.name;
+            document.getElementById('cSurname').value = customer.sur_name;
+            document.getElementById('cCnic').value = customer.cnic;
+            document.getElementById('cContact').value = customer.contact_number;
+            document.getElementById('cCity').value = customer.city;
+            document.getElementById('cCategory').value = customer.customer_category;
+            document.getElementById('cAddress').value = customer.address;
+            document.getElementById('cEmail').value = customer.email || '';
+            var meta = customer.meta_data || {};
+            Object.keys(meta).forEach(function (k) { addMetaRow(k, meta[k]); });
+        } else {
+            document.getElementById('customerModalTitle').textContent = 'Add Customer';
+            document.getElementById('customerId').value = '';
+        }
+        modal.show();
+    }
+
+    document.getElementById('btnAddCustomer').addEventListener('click', function () { openModal(null); });
+
+    document.getElementById('customerForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var id = document.getElementById('customerId').value;
+        var payload = {
+            name: document.getElementById('cName').value.trim(),
+            sur_name: document.getElementById('cSurname').value.trim(),
+            cnic: document.getElementById('cCnic').value.trim(),
+            contact_number: document.getElementById('cContact').value.trim(),
+            city: document.getElementById('cCity').value.trim(),
+            customer_category: document.getElementById('cCategory').value,
+            address: document.getElementById('cAddress').value.trim(),
+            email: document.getElementById('cEmail').value.trim() || null,
+            meta_data: collectMeta()
+        };
+        var btn = document.getElementById('btnSaveCustomer');
+        btn.disabled = true;
+        var op = id ? F.put('customers/' + id + '/', payload) : F.post('customers/', payload);
+        op.then(function () {
+            modal.hide();
+            F.toast(id ? 'Customer updated.' : 'Customer added.');
+            load();
+        }).catch(function (err) {
+            F.toast(F.errorText(err), 'danger');
+        }).finally(function () { btn.disabled = false; });
+    });
+
+    rows.addEventListener('click', function (e) {
+        var editBtn = e.target.closest('[data-edit]');
+        var delBtn = e.target.closest('[data-del]');
+        if (editBtn) {
+            F.get('customers/' + editBtn.getAttribute('data-edit') + '/').then(openModal);
+        } else if (delBtn) {
+            var id = delBtn.getAttribute('data-del');
+            if (confirm('Delete this customer? This cannot be undone.')) {
+                F.del('customers/' + id + '/').then(function () {
+                    F.toast('Customer deleted.');
+                    load();
+                }).catch(function (err) {
+                    F.toast(F.errorText(err), 'danger');
+                });
+            }
+        }
+    });
+
+    // Filters (debounced search)
+    var t;
+    document.getElementById('fSearch').addEventListener('input', function (e) {
+        clearTimeout(t);
+        t = setTimeout(function () { filters.search = e.target.value.trim(); load(); }, 300);
+    });
+    document.getElementById('fCategory').addEventListener('change', function (e) {
+        filters.category = e.target.value; load();
+    });
+    document.getElementById('btnReset').addEventListener('click', function () {
+        filters = { search: '', category: '' };
+        document.getElementById('fSearch').value = '';
+        document.getElementById('fCategory').value = '';
+        load();
+    });
+
+    load();
+})();
+</script>
+{% endblock %}
