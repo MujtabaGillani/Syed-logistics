@@ -6,7 +6,7 @@ from .views import (
     AirFreightView, OceanFreightView, RoadFreightView, TrainFreightView,
     CustomClearanceView, WarehouseView, LogisticSolView, SupplyChainView,
     DashboardView, CustomersView, GeneralVouchersView, OfficeExpensesView,
-    SaleOrdersView, ItemsView, ShipmentsView,
+    SaleOrdersView, ItemsView, ShipmentsView, EmployeesView,
     health_check
 )
 
@@ -41,6 +41,7 @@ urlpatterns = [
     path('office-expenses/', OfficeExpensesView.as_view(), name='office_expenses'),
     path('sale-orders/', SaleOrdersView.as_view(), name='sale_orders'),
     path('shipments/', ShipmentsView.as_view(), name='shipments'),
+    path('employees/', EmployeesView.as_view(), name='employees'),
     path('items/', ItemsView.as_view(), name='items'),
 
     # Health check endpoint

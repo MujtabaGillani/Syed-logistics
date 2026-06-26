@@ -381,6 +381,26 @@ class SaleOrderItem(models.Model):
         return f'{self.name} ({self.amount})'
 
 
+class Employee(models.Model):
+    name = models.CharField(max_length=255)
+    phone_number = models.CharField(max_length=20)
+    cnic = models.CharField('CNIC', max_length=20)
+    designation = models.CharField(max_length=150)
+    salary = models.DecimalField(
+        max_digits=14, decimal_places=2, default=Decimal('0.00'))
+    email = models.EmailField(blank=True, null=True)
+    address = models.CharField(max_length=500, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f'{self.name} — {self.designation}'
+
+
 class Shipment(models.Model):
     """A logistics shipment. It can belong to several customers and carry many
     items and photos. Sale orders reference a shipment via ``SaleOrder.shipment``."""
