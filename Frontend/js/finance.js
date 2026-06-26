@@ -128,8 +128,20 @@
         return 'Something went wrong. Please try again.';
     }
 
+    // Trigger a file download from a GET endpoint (exports).
+    function download(path, params) {
+        var url = buildUrl(path, params);
+        var a = document.createElement('a');
+        a.href = url;
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    }
+
     window.Finance = {
         API: API,
+        download: download,
         get: function (path, params) { return request(path, { params: params }); },
         post: function (path, body) { return request(path, { method: 'POST', body: body }); },
         put: function (path, body) { return request(path, { method: 'PUT', body: body }); },

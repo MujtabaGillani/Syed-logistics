@@ -15,30 +15,41 @@
                 <h1>Finance Dashboard</h1>
                 <div class="text-muted">Profit &amp; loss overview. Revenue is on an <strong>accrual basis</strong> (all invoiced amounts); cash received and outstanding dues are shown separately.</div>
             </div>
-            <div class="fin-toolbar mb-0">
-                <div>
-                    <label class="form-label">From</label>
-                    <input type="date" class="form-control" id="fFrom">
+            <div>
+                <div class="fin-presets mb-2" id="presetBar">
+                    <button class="btn btn-sm btn-outline-secondary" data-preset="today">Today</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-preset="3">Last 3 days</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-preset="7">Last 7 days</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-preset="30">Last 30 days</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-preset="month">This month</button>
+                    <button class="btn btn-sm btn-outline-secondary active" data-preset="all">All time</button>
                 </div>
-                <div>
-                    <label class="form-label">To</label>
-                    <input type="date" class="form-control" id="fTo">
-                </div>
-                <div>
-                    <button class="btn btn-primary" id="btnApply"><i class="fa fa-filter me-1"></i>Apply</button>
-                </div>
-                <div>
-                    <button class="btn btn-outline-secondary" id="btnClear">Clear</button>
+                <div class="fin-toolbar mb-0">
+                    <div>
+                        <label class="form-label">From</label>
+                        <input type="date" class="form-control" id="fFrom">
+                    </div>
+                    <div>
+                        <label class="form-label">To</label>
+                        <input type="date" class="form-control" id="fTo">
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" id="btnApply"><i class="fa fa-filter me-1"></i>Apply</button>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-secondary" id="btnClear">Clear</button>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Quick actions -->
         <div class="row g-3 mb-4 fin-quick">
-            <div class="col-6 col-lg-3"><a href="/customers/"><i class="fa fa-users"></i><span>Manage Customers</span></a></div>
-            <div class="col-6 col-lg-3"><a href="/general-vouchers/"><i class="fa fa-file-invoice-dollar"></i><span>General Vouchers</span></a></div>
-            <div class="col-6 col-lg-3"><a href="/office-expenses/"><i class="fa fa-receipt"></i><span>Office Expenses</span></a></div>
-            <div class="col-6 col-lg-3"><a href="/general-vouchers/?status=due" id="quickDue"><i class="fa fa-clock"></i><span>Outstanding Dues</span></a></div>
+            <div class="col-6 col-lg"><a href="/customers/"><i class="fa fa-users"></i><span>Manage Customers</span></a></div>
+            <div class="col-6 col-lg"><a href="/sale-orders/"><i class="fa fa-truck"></i><span>Sale Orders</span></a></div>
+            <div class="col-6 col-lg"><a href="/general-vouchers/"><i class="fa fa-file-invoice-dollar"></i><span>General Vouchers</span></a></div>
+            <div class="col-6 col-lg"><a href="/office-expenses/"><i class="fa fa-receipt"></i><span>Office Expenses</span></a></div>
+            <div class="col-6 col-lg"><a href="/general-vouchers/?status=due" id="quickDue"><i class="fa fa-clock"></i><span>Outstanding Dues</span></a></div>
         </div>
 
         <!-- KPI cards -->
@@ -141,8 +152,9 @@
             data: {
                 labels: m.labels,
                 datasets: [
-                    { label: 'Revenue', data: m.revenue, backgroundColor: 'rgba(6,163,218,.75)', order: 2 },
-                    { label: 'Expenses', data: m.expenses, backgroundColor: 'rgba(220,53,69,.75)', order: 2 },
+                    { label: 'Revenue (billed)', data: m.revenue, backgroundColor: 'rgba(6,163,218,.75)', order: 3 },
+                    { label: 'Received (cash in)', data: m.received || [], backgroundColor: 'rgba(25,135,84,.75)', order: 3 },
+                    { label: 'Expenses', data: m.expenses, backgroundColor: 'rgba(220,53,69,.75)', order: 3 },
                     { label: 'Profit / Loss', data: m.profit, type: 'line', borderColor: '#6f42c1',
                       backgroundColor: '#6f42c1', tension: .3, borderWidth: 2, order: 1, pointRadius: 3 }
                 ]
@@ -220,7 +232,7 @@
                 var badge = v.is_paid ? '<span class="fin-badge settled">Settled</span>' : '<span class="fin-badge due">Due</span>';
                 return '<tr><td><strong>' + F.escapeHtml(v.invoice_number) + '</strong></td>'
                     + '<td>' + F.escapeHtml(v.customer_name) + '</td>'
-                    + '<td class="num">' + F.money(v.amount) + '</td>'
+                    + '<td class="num">' + F.money(v.signed_amount) + '</td>'
                     + '<td>' + badge + '</td></tr>';
             }).join('');
         });
@@ -242,15 +254,47 @@
 
     function loadAll() { loadSummary(); loadRecentVouchers(); loadRecentExpenses(); }
 
+    function fmtDate(d) {
+        return d.getFullYear() + '-'
+            + String(d.getMonth() + 1).padStart(2, '0') + '-'
+            + String(d.getDate()).padStart(2, '0');
+    }
+    function setActivePreset(p) {
+        document.querySelectorAll('#presetBar [data-preset]').forEach(function (b) {
+            b.classList.toggle('active', b.getAttribute('data-preset') === p);
+        });
+    }
+
+    document.getElementById('presetBar').addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-preset]');
+        if (!btn) { return; }
+        var p = btn.getAttribute('data-preset');
+        var to = new Date(), from = new Date();
+        if (p === 'all') {
+            range = { from: '', to: '' };
+        } else {
+            if (p === 'today') { /* from = today */ }
+            else if (p === 'month') { from = new Date(to.getFullYear(), to.getMonth(), 1); }
+            else { from.setDate(to.getDate() - (parseInt(p, 10) - 1)); }
+            range = { from: fmtDate(from), to: fmtDate(to) };
+        }
+        document.getElementById('fFrom').value = range.from;
+        document.getElementById('fTo').value = range.to;
+        setActivePreset(p);
+        loadAll();
+    });
+
     document.getElementById('btnApply').addEventListener('click', function () {
         range.from = document.getElementById('fFrom').value;
         range.to = document.getElementById('fTo').value;
+        setActivePreset(null);   // custom range
         loadAll();
     });
     document.getElementById('btnClear').addEventListener('click', function () {
         range = { from: '', to: '' };
         document.getElementById('fFrom').value = '';
         document.getElementById('fTo').value = '';
+        setActivePreset('all');
         loadAll();
     });
 

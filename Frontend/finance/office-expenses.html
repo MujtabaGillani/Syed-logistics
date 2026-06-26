@@ -15,8 +15,16 @@
                 <h1>Office Expenses</h1>
                 <div class="text-muted">Record operating expenses with optional receipt images.</div>
             </div>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 flex-wrap">
                 <a href="/dashboard/" class="btn btn-outline-secondary"><i class="fa fa-chart-line me-2"></i>Dashboard</a>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"><i class="fa fa-download me-2"></i>Export</button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" data-export="excel"><i class="fa fa-file-excel me-2 text-success"></i>Excel (.xlsx)</a></li>
+                        <li><a class="dropdown-item" href="#" data-export="pdf"><i class="fa fa-file-pdf me-2 text-danger"></i>PDF</a></li>
+                    </ul>
+                </div>
+                <button class="btn btn-outline-secondary" id="btnImport"><i class="fa fa-upload me-2"></i>Import</button>
                 <button class="btn btn-primary" id="btnAddExpense"><i class="fa fa-plus me-2"></i>Add Expense</button>
             </div>
         </div>
@@ -49,7 +57,7 @@
                     <input type="text" class="form-control" id="fSearch" placeholder="Expense name">
                 </div>
                 <div>
-                    <button class="btn btn-outline-secondary" id="btnReset"><i class="fa fa-rotate-left me-1"></i>Reset</button>
+                    <button class="btn btn-outline-secondary" id="btnReset"><i class="fa fa-undo me-1"></i>Reset</button>
                 </div>
             </div>
 
@@ -132,6 +140,31 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary" id="btnSaveExpense">Save Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Import modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="importForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Import Expenses (Excel)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-2">Upload an <strong>.xlsx</strong> file. Row 1 must be headers. Recognised columns:</p>
+                    <code class="d-block mb-3" style="font-size:.8rem;">Name, Type, Amount, Date, Time, Notes</code>
+                    <p class="text-muted small">Images can't be imported in bulk — add them by editing the expense afterwards.</p>
+                    <input type="file" class="form-control" id="importFile" accept=".xlsx" required>
+                    <div id="importResult" class="mt-3"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary" id="btnDoImport">Upload &amp; Import</button>
                 </div>
             </form>
         </div>
@@ -284,6 +317,46 @@
         ['fFrom', 'fTo', 'fSearch'].forEach(function (id) { document.getElementById(id).value = ''; });
         document.getElementById('fType').value = '';
         load();
+    });
+
+    // ---- Export ----
+    document.querySelectorAll('[data-export]').forEach(function (el) {
+        el.addEventListener('click', function (e) {
+            e.preventDefault();
+            F.download('expenses/export/', Object.assign({ fmt: el.getAttribute('data-export') }, filters));
+        });
+    });
+
+    // ---- Import ----
+    var importModal = new bootstrap.Modal(document.getElementById('importModal'));
+    document.getElementById('btnImport').addEventListener('click', function () {
+        document.getElementById('importForm').reset();
+        document.getElementById('importResult').innerHTML = '';
+        importModal.show();
+    });
+    document.getElementById('importForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var file = document.getElementById('importFile').files[0];
+        if (!file) { return; }
+        var fd = new FormData();
+        fd.append('file', file);
+        var btn = document.getElementById('btnDoImport');
+        btn.disabled = true;
+        F.postForm('expenses/import_data/', fd).then(function (res) {
+            var html = '<div class="alert alert-success py-2 mb-2">Created: <strong>' + res.created
+                + '</strong> &middot; Skipped: <strong>' + res.skipped + '</strong></div>';
+            if (res.errors && res.errors.length) {
+                html += '<div class="alert alert-warning py-2 mb-0" style="max-height:180px;overflow:auto;"><ul class="mb-0">'
+                    + res.errors.map(function (x) { return '<li>Row ' + x.row + ': ' + F.escapeHtml(x.error) + '</li>'; }).join('')
+                    + '</ul></div>';
+            }
+            document.getElementById('importResult').innerHTML = html;
+            F.toast('Import finished: ' + res.created + ' created.');
+            load();
+        }).catch(function (err) {
+            document.getElementById('importResult').innerHTML =
+                '<div class="alert alert-danger py-2 mb-0">' + F.escapeHtml(F.errorText(err)) + '</div>';
+        }).finally(function () { btn.disabled = false; });
     });
 
     load();
