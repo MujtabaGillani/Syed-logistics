@@ -10,24 +10,36 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 from django.contrib import admin
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from a .env file (looked up next to manage.py).
+load_dotenv(BASE_DIR / '.env')
+
+
+def env_bool(name, default=False):
+    return os.getenv(name, str(default)).strip().lower() in ('1', 'true', 'yes', 'on')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-^5u1j_k#cwlfb$w*03k3l8uc4stww6-tp&z$a((2c+dpn%gr)4'
+SECRET_KEY = os.getenv(
+    'SECRET_KEY',
+    'django-insecure-^5u1j_k#cwlfb$w*03k3l8uc4stww6-tp&z$a((2c+dpn%gr)4',
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env_bool('DEBUG', True)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', '*').split(',') if h.strip()]
 
 
 # Application definition
@@ -41,6 +53,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'coreFE',
     'Reviews',
+    'finance',
     'rest_framework',
     # 'corsheaders',
     # 'drf_yasg',
@@ -59,10 +72,16 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'backend.urls'
 
+# The Frontend folder lives next to manage.py inside Docker (/app/Frontend),
+# but at the repository root during local development. Use whichever exists.
+FRONTEND_DIR = BASE_DIR / 'Frontend'
+if not FRONTEND_DIR.exists():
+    FRONTEND_DIR = BASE_DIR.parent / 'Frontend'
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'Frontend'],
+        'DIRS': [FRONTEND_DIR],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -80,10 +99,16 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+DATABASE_PATH = BASE_DIR / os.getenv('DATABASE_PATH', 'data/db.sqlite3')
+
+# Make sure the directory that holds the SQLite file exists, otherwise
+# sqlite3 raises "unable to open database file".
+DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'data' / 'db.sqlite3',
+        'NAME': DATABASE_PATH,
     }
 }
 
@@ -123,10 +148,27 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    BASE_DIR / 'Frontend',
-]
+# Only include the Frontend dir if it actually exists, to avoid the
+# staticfiles.W004 warning when it is mounted elsewhere.
+STATICFILES_DIRS = [FRONTEND_DIR] if FRONTEND_DIR.exists() else []
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Uploaded files (office expense receipts, etc.)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Django REST Framework
+# This is an internal management tool without a login wall, so the finance
+# API is open. SessionAuthentication keeps it usable from the admin while
+# still skipping CSRF for anonymous browser requests.
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

@@ -1,0 +1,128 @@
+/* Styling for the finance / management dashboard pages.
+ * Builds on the existing Bootstrap + template theme (primary colour reused). */
+
+.fin-wrap {
+    background: #f4f6fb;
+    min-height: 70vh;
+    padding: 3rem 0 5rem;
+}
+
+.fin-page-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+}
+
+.fin-page-head h1 {
+    font-size: 1.9rem;
+    margin: 0;
+    font-weight: 700;
+}
+
+.fin-page-head .text-muted { font-size: .95rem; }
+
+/* KPI cards */
+.fin-kpi {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.25rem 1.4rem;
+    box-shadow: 0 6px 18px rgba(20, 40, 80, .06);
+    height: 100%;
+    border-left: 4px solid var(--bs-primary, #06A3DA);
+}
+.fin-kpi .label {
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-size: .72rem;
+    color: #7a8699;
+    font-weight: 600;
+}
+.fin-kpi .value { font-size: 1.55rem; font-weight: 700; color: #1f2d3d; margin-top: .25rem; }
+.fin-kpi .sub { font-size: .8rem; color: #9aa6b6; }
+.fin-kpi.is-revenue { border-left-color: #06A3DA; }
+.fin-kpi.is-received { border-left-color: #198754; }
+.fin-kpi.is-outstanding { border-left-color: #fd7e14; }
+.fin-kpi.is-expense { border-left-color: #dc3545; }
+.fin-kpi.is-profit { border-left-color: #6f42c1; }
+.fin-kpi .value.profit-pos { color: #198754; }
+.fin-kpi .value.profit-neg { color: #dc3545; }
+
+/* Generic surface card */
+.fin-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(20, 40, 80, .06);
+    padding: 1.4rem;
+    margin-bottom: 1.5rem;
+}
+.fin-card h5 { font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem; }
+
+/* Tables */
+.fin-table { width: 100%; margin: 0; }
+.fin-table thead th {
+    background: #f4f6fb;
+    color: #54627a;
+    font-size: .76rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    border-bottom: 2px solid #e6eaf2;
+    white-space: nowrap;
+}
+.fin-table td, .fin-table th { padding: .7rem .75rem; vertical-align: middle; }
+.fin-table tbody tr:hover { background: #f9fbfe; }
+.fin-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.fin-badge {
+    display: inline-block;
+    padding: .25em .6em;
+    font-size: .72rem;
+    font-weight: 600;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+}
+.fin-badge.due { background: #fff3cd; color: #92670b; }
+.fin-badge.settled { background: #d1e7dd; color: #0f5132; }
+.fin-badge.cash { background: #d1e7dd; color: #0f5132; }
+.fin-badge.credit { background: #cfe2ff; color: #084298; }
+.fin-badge.others { background: #e2e3e5; color: #41464b; }
+.fin-badge.retail { background: #cfe2ff; color: #084298; }
+.fin-badge.wholesale { background: #e7ddff; color: #4b2c91; }
+.fin-badge.other { background: #e2e3e5; color: #41464b; }
+
+.fin-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+    align-items: flex-end;
+    margin-bottom: 1.2rem;
+}
+.fin-toolbar .form-label { font-size: .75rem; font-weight: 600; color: #54627a; margin-bottom: .2rem; }
+.fin-toolbar .form-control, .fin-toolbar .form-select { min-width: 150px; }
+
+.fin-empty { text-align: center; color: #9aa6b6; padding: 2.5rem 1rem; }
+
+.fin-link { cursor: pointer; }
+
+.fin-receipt-thumb {
+    width: 42px; height: 42px; object-fit: cover; border-radius: 6px; border: 1px solid #e6eaf2;
+}
+
+/* Quick-action buttons on the dashboard */
+.fin-quick a {
+    display: flex; align-items: center; gap: .6rem;
+    background: #fff; border-radius: 10px; padding: .9rem 1.1rem;
+    box-shadow: 0 6px 18px rgba(20, 40, 80, .06);
+    color: #1f2d3d; text-decoration: none; font-weight: 600; height: 100%;
+    transition: transform .15s ease;
+}
+.fin-quick a:hover { transform: translateY(-2px); color: var(--bs-primary, #06A3DA); }
+.fin-quick i { font-size: 1.3rem; color: var(--bs-primary, #06A3DA); }
+
+@media (max-width: 575px) {
+    .fin-page-head h1 { font-size: 1.5rem; }
+    .fin-kpi .value { font-size: 1.3rem; }
+}

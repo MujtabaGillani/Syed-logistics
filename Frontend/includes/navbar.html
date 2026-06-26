@@ -23,6 +23,15 @@
                 </div>
             </div>
             <a href="/contact/" class="nav-item nav-link {% if request.path == '/contact/' %}active{% endif %}">Contact</a>
+            <div class="nav-item dropdown">
+                <a href="#" class="nav-link dropdown-toggle {% if '/dashboard' in request.path or '/customers' in request.path or '/general-vouchers' in request.path or '/office-expenses' in request.path %}active{% endif %}" data-bs-toggle="dropdown">Dashboard</a>
+                <div class="dropdown-menu fade-up m-0">
+                    <a href="/dashboard/" class="dropdown-item {% if request.path == '/dashboard/' %}active{% endif %}"><i class="fa fa-chart-line me-2"></i>Overview</a>
+                    <a href="/customers/" class="dropdown-item {% if request.path == '/customers/' %}active{% endif %}"><i class="fa fa-users me-2"></i>Customers</a>
+                    <a href="/general-vouchers/" class="dropdown-item {% if request.path == '/general-vouchers/' %}active{% endif %}"><i class="fa fa-file-invoice-dollar me-2"></i>General Vouchers</a>
+                    <a href="/office-expenses/" class="dropdown-item {% if request.path == '/office-expenses/' %}active{% endif %}"><i class="fa fa-receipt me-2"></i>Office Expenses</a>
+                </div>
+            </div>
         </div>
         <h4 class="m-0 pe-lg-5 d-none d-lg-block"><i class="fa fa-headphones text-primary me-3"></i>+92 329 8756 059</h4>
     </div>

@@ -23,10 +23,12 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('coreFE.urls')),
     path('api/reviews/', include('Reviews.urls')),
+    path('api/finance/', include('finance.urls')),
 ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
     # Serve static files from root paths for Frontend files
     urlpatterns += static('/css/', document_root=settings.STATICFILES_DIRS[0] / 'css')

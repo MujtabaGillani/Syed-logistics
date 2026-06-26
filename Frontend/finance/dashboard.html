@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - Syed Logistic{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/finance.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="fin-wrap">
+    <div class="container">
+        <div class="fin-page-head">
+            <div>
+                <h1>Finance Dashboard</h1>
+                <div class="text-muted">Profit &amp; loss overview. Revenue is on an <strong>accrual basis</strong> (all invoiced amounts); cash received and outstanding dues are shown separately.</div>
+            </div>
+            <div class="fin-toolbar mb-0">
+                <div>
+                    <label class="form-label">From</label>
+                    <input type="date" class="form-control" id="fFrom">
+                </div>
+                <div>
+                    <label class="form-label">To</label>
+                    <input type="date" class="form-control" id="fTo">
+                </div>
+                <div>
+                    <button class="btn btn-primary" id="btnApply"><i class="fa fa-filter me-1"></i>Apply</button>
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary" id="btnClear">Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="row g-3 mb-4 fin-quick">
+            <div class="col-6 col-lg-3"><a href="/customers/"><i class="fa fa-users"></i><span>Manage Customers</span></a></div>
+            <div class="col-6 col-lg-3"><a href="/general-vouchers/"><i class="fa fa-file-invoice-dollar"></i><span>General Vouchers</span></a></div>
+            <div class="col-6 col-lg-3"><a href="/office-expenses/"><i class="fa fa-receipt"></i><span>Office Expenses</span></a></div>
+            <div class="col-6 col-lg-3"><a href="/general-vouchers/?status=due" id="quickDue"><i class="fa fa-clock"></i><span>Outstanding Dues</span></a></div>
+        </div>
+
+        <!-- KPI cards -->
+        <div class="row g-3 mb-2" id="kpiRow">
+            <div class="col-12"><div class="fin-empty">Loading dashboard…</div></div>
+        </div>
+
+        <!-- Charts -->
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <div class="fin-card">
+                    <h5>Profit &amp; Loss — last 12 months</h5>
+                    <canvas id="plChart" height="120"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="fin-card">
+                    <h5>Expense breakdown</h5>
+                    <canvas id="expChart" height="220"></canvas>
+                    <div id="expLegend" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tables -->
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <div class="fin-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="mb-0">Recent Vouchers</h5>
+                        <a href="/general-vouchers/" class="btn btn-sm btn-outline-primary">View all</a>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="fin-table">
+                            <thead><tr><th>Invoice #</th><th>Customer</th><th class="num">Amount</th><th>Status</th></tr></thead>
+                            <tbody id="recentVouchers"><tr><td colspan="4" class="fin-empty">Loading…</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="fin-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="mb-0">Recent Expenses</h5>
+                        <a href="/office-expenses/" class="btn btn-sm btn-outline-primary">View all</a>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="fin-table">
+                            <thead><tr><th>Name</th><th>Type</th><th>Date</th><th class="num">Amount</th></tr></thead>
+                            <tbody id="recentExpenses"><tr><td colspan="4" class="fin-empty">Loading…</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/finance.js' %}"></script>
+<script>
+(function () {
+    var F = window.Finance;
+    var plChart = null, expChart = null;
+    var range = { from: '', to: '' };
+
+    var EXP_LABELS = {
+        rent: 'Rent', utilities: 'Utilities', salary: 'Salary', supplies: 'Supplies',
+        maintenance: 'Maintenance', travel: 'Travel', other: 'Other'
+    };
+    var PALETTE = ['#06A3DA', '#dc3545', '#198754', '#fd7e14', '#6f42c1', '#0dcaf0', '#6c757d'];
+
+    function kpi(label, value, cls, sub, valueClass) {
+        return '<div class="col-6 col-lg">'
+            + '<div class="fin-kpi ' + cls + '">'
+            + '<div class="label">' + label + '</div>'
+            + '<div class="value ' + (valueClass || '') + '">' + value + '</div>'
+            + (sub ? '<div class="sub">' + sub + '</div>' : '')
+            + '</div></div>';
+    }
+
+    function renderKpis(t) {
+        var profitClass = t.is_profit ? 'profit-pos' : 'profit-neg';
+        var profitLabel = t.is_profit ? 'Net Profit' : 'Net Loss';
+        document.getElementById('kpiRow').innerHTML =
+            kpi('Revenue (billed)', F.money(t.revenue), 'is-revenue', t.voucher_count + ' vouchers')
+            + kpi('Received (cash in)', F.money(t.received), 'is-received', '')
+            + kpi('Outstanding (due)', F.money(t.outstanding), 'is-outstanding', t.due_count + ' unpaid')
+            + kpi('Expenses', F.money(t.expenses), 'is-expense', t.expense_count + ' entries')
+            + kpi(profitLabel, F.money(t.net_profit), 'is-profit', 'Revenue − Expenses', profitClass);
+    }
+
+    function renderPlChart(m) {
+        var ctx = document.getElementById('plChart').getContext('2d');
+        if (plChart) { plChart.destroy(); }
+        plChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: m.labels,
+                datasets: [
+                    { label: 'Revenue', data: m.revenue, backgroundColor: 'rgba(6,163,218,.75)', order: 2 },
+                    { label: 'Expenses', data: m.expenses, backgroundColor: 'rgba(220,53,69,.75)', order: 2 },
+                    { label: 'Profit / Loss', data: m.profit, type: 'line', borderColor: '#6f42c1',
+                      backgroundColor: '#6f42c1', tension: .3, borderWidth: 2, order: 1, pointRadius: 3 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function (c) { return c.dataset.label + ': ' + F.money(c.parsed.y); }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        ticks: { callback: function (v) { return 'Rs ' + Number(v).toLocaleString('en-PK'); } }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderExpChart(breakdown) {
+        var labels = [], values = [], colors = [], legend = '';
+        breakdown.forEach(function (b, i) {
+            var amt = Number(b.total);
+            if (amt <= 0) { return; }
+            var label = EXP_LABELS[b.type] || b.type;
+            var color = PALETTE[i % PALETTE.length];
+            labels.push(label); values.push(amt); colors.push(color);
+            legend += '<div class="d-flex justify-content-between" style="font-size:.85rem;margin-bottom:.3rem;">'
+                + '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + color + ';margin-right:6px;"></span>'
+                + F.escapeHtml(label) + '</span><strong>' + F.money(amt) + '</strong></div>';
+        });
+        var ctx = document.getElementById('expChart').getContext('2d');
+        if (expChart) { expChart.destroy(); }
+        if (!values.length) {
+            document.getElementById('expLegend').innerHTML = '<div class="fin-empty">No expenses recorded yet.</div>';
+            return;
+        }
+        expChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels: labels, datasets: [{ data: values, backgroundColor: colors }] },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: function (c) { return c.label + ': ' + F.money(c.parsed); } } }
+                }
+            }
+        });
+        document.getElementById('expLegend').innerHTML = legend;
+    }
+
+    function loadSummary() {
+        document.getElementById('kpiRow').innerHTML = '<div class="col-12"><div class="fin-empty">Loading dashboard…</div></div>';
+        F.get('dashboard-summary/', range).then(function (d) {
+            renderKpis(d.totals);
+            renderPlChart(d.monthly);
+            renderExpChart(d.expense_breakdown);
+        }).catch(function () {
+            document.getElementById('kpiRow').innerHTML = '<div class="col-12"><div class="fin-empty text-danger">Failed to load dashboard data.</div></div>';
+        });
+    }
+
+    function loadRecentVouchers() {
+        F.get('vouchers/', range).then(function (data) {
+            data = (data || []).slice(0, 8);
+            var el = document.getElementById('recentVouchers');
+            if (!data.length) { el.innerHTML = '<tr><td colspan="4" class="fin-empty">No vouchers yet.</td></tr>'; return; }
+            el.innerHTML = data.map(function (v) {
+                var badge = v.is_paid ? '<span class="fin-badge settled">Settled</span>' : '<span class="fin-badge due">Due</span>';
+                return '<tr><td><strong>' + F.escapeHtml(v.invoice_number) + '</strong></td>'
+                    + '<td>' + F.escapeHtml(v.customer_name) + '</td>'
+                    + '<td class="num">' + F.money(v.amount) + '</td>'
+                    + '<td>' + badge + '</td></tr>';
+            }).join('');
+        });
+    }
+
+    function loadRecentExpenses() {
+        F.get('expenses/', range).then(function (data) {
+            data = (data || []).slice(0, 8);
+            var el = document.getElementById('recentExpenses');
+            if (!data.length) { el.innerHTML = '<tr><td colspan="4" class="fin-empty">No expenses yet.</td></tr>'; return; }
+            el.innerHTML = data.map(function (x) {
+                return '<tr><td><strong>' + F.escapeHtml(x.name) + '</strong></td>'
+                    + '<td><span class="fin-badge other">' + F.escapeHtml(x.expense_type_display) + '</span></td>'
+                    + '<td>' + F.date(x.date) + '</td>'
+                    + '<td class="num">' + F.money(x.amount) + '</td></tr>';
+            }).join('');
+        });
+    }
+
+    function loadAll() { loadSummary(); loadRecentVouchers(); loadRecentExpenses(); }
+
+    document.getElementById('btnApply').addEventListener('click', function () {
+        range.from = document.getElementById('fFrom').value;
+        range.to = document.getElementById('fTo').value;
+        loadAll();
+    });
+    document.getElementById('btnClear').addEventListener('click', function () {
+        range = { from: '', to: '' };
+        document.getElementById('fFrom').value = '';
+        document.getElementById('fTo').value = '';
+        loadAll();
+    });
+
+    loadAll();
+})();
+</script>
+{% endblock %}

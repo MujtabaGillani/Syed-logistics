@@ -5,6 +5,7 @@ from .views import (
     TestimonialView, SupportView, TermsView, NotFoundView,
     AirFreightView, OceanFreightView, RoadFreightView, TrainFreightView,
     CustomClearanceView, WarehouseView, LogisticSolView, SupplyChainView,
+    DashboardView, CustomersView, GeneralVouchersView, OfficeExpensesView,
     health_check
 )
 
@@ -31,6 +32,12 @@ urlpatterns = [
     path('services/warehouse/', WarehouseView.as_view(), name='warehouse'),
     path('services/logistics-solutions/', LogisticSolView.as_view(), name='logistics_solutions'),
     path('services/supply-chain/', SupplyChainView.as_view(), name='supply_chain'),
+
+    # Finance / management dashboard pages
+    path('dashboard/', DashboardView.as_view(), name='dashboard'),
+    path('customers/', CustomersView.as_view(), name='customers'),
+    path('general-vouchers/', GeneralVouchersView.as_view(), name='general_vouchers'),
+    path('office-expenses/', OfficeExpensesView.as_view(), name='office_expenses'),
 
     # Health check endpoint
     path('health/', health_check, name='health'),
