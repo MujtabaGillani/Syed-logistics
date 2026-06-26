@@ -88,6 +88,7 @@
 .fin-badge.settled { background: #d1e7dd; color: #0f5132; }
 .fin-badge.cash { background: #d1e7dd; color: #0f5132; }
 .fin-badge.credit { background: #cfe2ff; color: #084298; }
+.fin-badge.debit { background: #f8d7da; color: #842029; }
 .fin-badge.others { background: #e2e3e5; color: #41464b; }
 .fin-badge.retail { background: #cfe2ff; color: #084298; }
 .fin-badge.wholesale { background: #e7ddff; color: #4b2c91; }
@@ -104,6 +105,13 @@
 .fin-toolbar .form-control, .fin-toolbar .form-select { min-width: 150px; }
 
 .fin-empty { text-align: center; color: #9aa6b6; padding: 2.5rem 1rem; }
+
+.fin-presets { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: flex-end; }
+.fin-presets .btn.active {
+    background: var(--bs-primary, #06A3DA);
+    border-color: var(--bs-primary, #06A3DA);
+    color: #fff;
+}
 
 .fin-link { cursor: pointer; }
 

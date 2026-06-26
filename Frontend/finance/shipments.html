@@ -1,0 +1,645 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Shipments - Syed Logistic{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/finance.css' %}" rel="stylesheet">
+<style>
+    .item-search-wrap { position: relative; }
+    .item-search-results {
+        position: absolute; z-index: 30; top: 100%; left: 0; right: 0;
+        background: #fff; border: 1px solid #e6eaf2; border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(20,40,80,.12); max-height: 240px;
+        overflow: auto; display: none;
+    }
+    .item-search-results .opt { padding: .55rem .8rem; cursor: pointer; font-size: .9rem; }
+    .item-search-results .opt:hover { background: #f4f6fb; }
+    .item-search-results .opt small { color: #9aa6b6; }
+    .item-search-results .add-new { color: #06A3DA; font-weight: 600; border-top: 1px solid #eef1f6; }
+    .cust-chip {
+        display: inline-flex; align-items: center; gap: .4rem; background: #e7f4fb;
+        color: #084a63; border-radius: 20px; padding: .25rem .7rem; margin: .2rem;
+        font-size: .85rem;
+    }
+    .cust-chip .x { cursor: pointer; font-weight: 700; }
+    .ship-thumb { width: 70px; height: 70px; object-fit: cover; border-radius: 8px;
+        border: 1px solid #e6eaf2; }
+    .ship-thumb-wrap { position: relative; display: inline-block; margin: .25rem; }
+    .ship-thumb-wrap .del {
+        position: absolute; top: -6px; right: -6px; background: #dc3545; color: #fff;
+        border-radius: 50%; width: 20px; height: 20px; font-size: .7rem; line-height: 20px;
+        text-align: center; cursor: pointer;
+    }
+    .ship-badge.pending { background:#fff3cd; color:#92670b; }
+    .ship-badge.in_transit { background:#cfe2ff; color:#084298; }
+    .ship-badge.delivered { background:#d1e7dd; color:#0f5132; }
+    .ship-badge.cancelled { background:#f8d7da; color:#842029; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fin-wrap">
+    <div class="container">
+        <div class="fin-page-head">
+            <div>
+                <h1>Shipments</h1>
+                <div class="text-muted">Track shipments with multiple customers, items and photos. Sale orders link to a shipment.</div>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/sale-orders/" class="btn btn-outline-secondary"><i class="fa fa-truck me-2"></i>Sale Orders</a>
+                <button class="btn btn-primary" id="btnAddShipment"><i class="fa fa-plus me-2"></i>New Shipment</button>
+            </div>
+        </div>
+
+        <div class="fin-card">
+            <div class="fin-toolbar">
+                <div>
+                    <label class="form-label">From (date)</label>
+                    <input type="date" class="form-control" id="fFrom">
+                </div>
+                <div>
+                    <label class="form-label">To (date)</label>
+                    <input type="date" class="form-control" id="fTo">
+                </div>
+                <div>
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="fStatus">
+                        <option value="">All</option>
+                        <option value="pending">Pending</option>
+                        <option value="in_transit">In Transit</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" id="fSearch" placeholder="Shipment ID / customer">
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary" id="btnReset"><i class="fa fa-undo me-1"></i>Reset</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="fin-table">
+                    <thead>
+                        <tr>
+                            <th>Shipment ID</th>
+                            <th>Date</th>
+                            <th>Customers</th>
+                            <th>Status</th>
+                            <th class="num">Items</th>
+                            <th class="num">Photos</th>
+                            <th class="num">Weight (kg)</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shipRows"><tr><td colspan="8" class="fin-empty">Loading…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Shipment modal -->
+<div class="modal fade" id="shipModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <form id="shipForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="shipModalTitle">New Shipment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="shipId">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Shipment ID</label>
+                            <input type="text" class="form-control" id="shipCode" readonly placeholder="Auto-generated (SHP-…)" style="background:#f4f6fb;">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Shipment Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="shipDate" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="shipStatus">
+                                <option value="pending">Pending</option>
+                                <option value="in_transit">In Transit</option>
+                                <option value="delivered">Delivered</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+                    <label class="form-label fw-bold">Customers <span class="text-danger">*</span></label>
+                    <div class="d-flex gap-2 align-items-center mb-2">
+                        <select class="form-select" id="custPicker"><option value="">Add a customer…</option></select>
+                        <button type="button" class="btn btn-outline-primary" id="btnNewCustomer" title="Add new customer"><i class="fa fa-plus"></i></button>
+                    </div>
+                    <div id="custChips" class="mb-2"></div>
+
+                    <hr class="my-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">Items</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnNewItemTop"><i class="fa fa-plus me-1"></i>New Item</button>
+                    </div>
+                    <div class="item-search-wrap mb-3">
+                        <input type="text" class="form-control" id="itemSearch" placeholder="Type SKU or name (e.g. LMS) to find items…" autocomplete="off">
+                        <div class="item-search-results" id="itemResults"></div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="fin-table" id="lineTable">
+                            <thead><tr><th>Item</th><th>SKU</th><th class="num">Weight (kg)</th><th class="num">Qty</th><th></th></tr></thead>
+                            <tbody id="lineRows"><tr><td colspan="5" class="fin-empty">No items yet — search above to add.</td></tr></tbody>
+                        </table>
+                    </div>
+
+                    <hr class="my-3">
+                    <label class="form-label fw-bold">Photos</label>
+                    <input type="file" class="form-control mb-2" id="shipImages" accept="image/*" multiple>
+                    <div id="pendingImages" class="mb-2"></div>
+                    <div id="existingImages" class="mb-2"></div>
+
+                    <div class="mt-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" id="shipNotes" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveShip">Save Shipment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- New Item (inline) modal -->
+<div class="modal fade" id="newItemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="newItemForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label">SKU <span class="text-danger">*</span></label><input type="text" class="form-control" id="niSku" required></div>
+                        <div class="col-md-6"><label class="form-label">Name <span class="text-danger">*</span></label><input type="text" class="form-control" id="niName" required></div>
+                        <div class="col-md-6"><label class="form-label">Weight (kg)</label><input type="number" step="0.001" min="0" class="form-control" id="niWeight" value="0"></div>
+                        <div class="col-md-6"><label class="form-label">Amount (Rs)</label><input type="number" step="0.01" min="0" class="form-control" id="niAmount" value="0"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveNewItem">Save &amp; Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- New Customer (inline) modal -->
+<div class="modal fade" id="newCustomerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form id="newCustomerForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Customer</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label">First Name <span class="text-danger">*</span></label><input type="text" class="form-control" id="ncName" required></div>
+                        <div class="col-md-6"><label class="form-label">Surname <span class="text-danger">*</span></label><input type="text" class="form-control" id="ncSurname" required></div>
+                        <div class="col-md-6"><label class="form-label">CNIC <span class="text-danger">*</span></label><input type="text" class="form-control" id="ncCnic" required></div>
+                        <div class="col-md-6"><label class="form-label">Contact <span class="text-danger">*</span></label><input type="text" class="form-control" id="ncContact" required></div>
+                        <div class="col-md-6"><label class="form-label">City <span class="text-danger">*</span></label><input type="text" class="form-control" id="ncCity" required></div>
+                        <div class="col-md-6"><label class="form-label">Category</label>
+                            <select class="form-select" id="ncCategory"><option value="retail">Retail</option><option value="wholesale">Wholesale</option><option value="other">Other</option></select></div>
+                        <div class="col-12"><label class="form-label">Address <span class="text-danger">*</span></label><input type="text" class="form-control" id="ncAddress" required></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveNewCustomer">Save &amp; Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View modal -->
+<div class="modal fade" id="viewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title mb-0" id="vTitle">Shipment</h5>
+                    <small class="text-muted" id="vSub"></small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1"><strong>Customers:</strong> <span id="vCustomers"></span></p>
+                <p class="mb-3"><strong>Notes:</strong> <span id="vNotes"></span></p>
+                <h6 class="fw-bold">Items</h6>
+                <div class="table-responsive mb-3">
+                    <table class="fin-table"><thead><tr><th>Item</th><th>SKU</th><th class="num">Weight (kg)</th><th class="num">Qty</th></tr></thead>
+                    <tbody id="vItems"></tbody></table>
+                </div>
+                <h6 class="fw-bold">Photos</h6>
+                <div id="vImages"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/finance.js' %}"></script>
+<script>
+(function () {
+    var F = window.Finance;
+    var shipModal = new bootstrap.Modal(document.getElementById('shipModal'));
+    var newItemModal = new bootstrap.Modal(document.getElementById('newItemModal'));
+    var newCustomerModal = new bootstrap.Modal(document.getElementById('newCustomerModal'));
+    var viewModal = new bootstrap.Modal(document.getElementById('viewModal'));
+    var rows = document.getElementById('shipRows');
+
+    var customersCache = [];
+    var selectedCustomers = [];   // [{id, name}]
+    var lines = [];               // [{item, sku, name, weight_kg, quantity}]
+    var pendingImages = [];       // [{file, url}] — selected but not yet uploaded
+    var editingId = null;
+    var filters = { from: '', to: '', status: '', search: '' };
+    function today() { return new Date().toISOString().slice(0, 10); }
+
+    function statusBadge(s, label) {
+        return '<span class="fin-badge ship-badge ' + F.escapeHtml(s) + '">' + F.escapeHtml(label) + '</span>';
+    }
+
+    // Keep underlying modal usable after a stacked modal closes.
+    ['newItemModal', 'newCustomerModal'].forEach(function (id) {
+        document.getElementById(id).addEventListener('hidden.bs.modal', function () {
+            if (document.getElementById('shipModal').classList.contains('show')) {
+                document.body.classList.add('modal-open');
+            }
+        });
+    });
+
+    function loadCustomers() {
+        return F.get('customers/').then(function (data) {
+            customersCache = data || [];
+            renderCustPicker();
+        });
+    }
+    function renderCustPicker() {
+        var selIds = selectedCustomers.map(function (c) { return c.id; });
+        var opts = '<option value="">Add a customer…</option>';
+        customersCache.forEach(function (c) {
+            if (selIds.indexOf(c.id) === -1) {
+                opts += '<option value="' + c.id + '">' + F.escapeHtml(c.full_name) + '</option>';
+            }
+        });
+        document.getElementById('custPicker').innerHTML = opts;
+    }
+    function renderChips() {
+        document.getElementById('custChips').innerHTML = selectedCustomers.length
+            ? selectedCustomers.map(function (c) {
+                return '<span class="cust-chip">' + F.escapeHtml(c.name)
+                    + ' <span class="x" data-cust="' + c.id + '">&times;</span></span>';
+            }).join('')
+            : '<span class="text-muted">No customers added yet.</span>';
+        renderCustPicker();
+    }
+    document.getElementById('custPicker').addEventListener('change', function () {
+        var id = Number(this.value);
+        if (!id) { return; }
+        var c = customersCache.find(function (x) { return x.id === id; });
+        if (c) { selectedCustomers.push({ id: c.id, name: c.full_name }); renderChips(); }
+        this.value = '';
+    });
+    document.getElementById('custChips').addEventListener('click', function (e) {
+        var x = e.target.closest('[data-cust]');
+        if (x) {
+            var id = Number(x.getAttribute('data-cust'));
+            selectedCustomers = selectedCustomers.filter(function (c) { return c.id !== id; });
+            renderChips();
+        }
+    });
+
+    // ---- line items ----
+    function renderLines() {
+        var body = document.getElementById('lineRows');
+        if (!lines.length) {
+            body.innerHTML = '<tr><td colspan="5" class="fin-empty">No items yet — search above to add.</td></tr>';
+            return;
+        }
+        body.innerHTML = lines.map(function (ln, i) {
+            return '<tr><td>' + F.escapeHtml(ln.name) + '</td><td>' + F.escapeHtml(ln.sku || '—') + '</td>'
+                + '<td class="num"><input type="number" step="0.001" min="0" class="form-control form-control-sm" style="max-width:120px" data-i="' + i + '" data-f="weight_kg" value="' + ln.weight_kg + '"></td>'
+                + '<td class="num"><input type="number" step="1" min="1" class="form-control form-control-sm" style="max-width:90px" data-i="' + i + '" data-f="quantity" value="' + ln.quantity + '"></td>'
+                + '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-rm="' + i + '"><i class="fa fa-times"></i></button></td></tr>';
+        }).join('');
+    }
+    document.getElementById('lineRows').addEventListener('input', function (e) {
+        var inp = e.target.closest('[data-i]');
+        if (inp) { lines[+inp.getAttribute('data-i')][inp.getAttribute('data-f')] = inp.value; }
+    });
+    document.getElementById('lineRows').addEventListener('click', function (e) {
+        var rm = e.target.closest('[data-rm]');
+        if (rm) { lines.splice(+rm.getAttribute('data-rm'), 1); renderLines(); }
+    });
+
+    // ---- item search ----
+    var searchBox = document.getElementById('itemSearch');
+    var resultsBox = document.getElementById('itemResults');
+    var searchTimer;
+    function hideResults() { resultsBox.style.display = 'none'; }
+    searchBox.addEventListener('input', function () {
+        var q = searchBox.value.trim();
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function () {
+            F.get('items/', { search: q, active: 1 }).then(function (items) {
+                var html = '';
+                (items || []).forEach(function (it) {
+                    html += '<div class="opt" data-id="' + it.id + '">' + F.escapeHtml(it.name)
+                        + ' <small>' + F.escapeHtml(it.sku) + ' • ' + Number(it.weight_kg) + 'kg</small></div>';
+                });
+                html += '<div class="opt add-new"><i class="fa fa-plus me-1"></i>Add new item' + (q ? ' “' + F.escapeHtml(q) + '”' : '') + '</div>';
+                resultsBox.innerHTML = html;
+                resultsBox.style.display = 'block';
+            });
+        }, 250);
+    });
+    searchBox.addEventListener('focus', function () { searchBox.dispatchEvent(new Event('input')); });
+    document.addEventListener('click', function (e) { if (!e.target.closest('.item-search-wrap')) { hideResults(); } });
+    resultsBox.addEventListener('mousedown', function (e) {
+        var addNew = e.target.closest('.add-new');
+        var opt = e.target.closest('.opt:not(.add-new)');
+        if (addNew) { e.preventDefault(); openNewItem(searchBox.value.trim()); hideResults(); }
+        else if (opt) {
+            e.preventDefault();
+            F.get('items/' + opt.getAttribute('data-id') + '/').then(function (it) {
+                lines.push({ item: it.id, sku: it.sku, name: it.name, weight_kg: it.weight_kg, quantity: 1 });
+                renderLines();
+            });
+            searchBox.value = ''; hideResults();
+        }
+    });
+
+    // ---- new item ----
+    function openNewItem(prefill) {
+        document.getElementById('newItemForm').reset();
+        document.getElementById('niWeight').value = 0;
+        document.getElementById('niAmount').value = 0;
+        if (prefill) { document.getElementById('niName').value = prefill; }
+        newItemModal.show();
+    }
+    document.getElementById('btnNewItemTop').addEventListener('click', function () { openNewItem(''); });
+    document.getElementById('newItemForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var payload = {
+            sku: document.getElementById('niSku').value.trim(),
+            name: document.getElementById('niName').value.trim(),
+            weight_kg: document.getElementById('niWeight').value || 0,
+            amount: document.getElementById('niAmount').value || 0
+        };
+        var btn = document.getElementById('btnSaveNewItem');
+        btn.disabled = true;
+        F.post('items/', payload).then(function (it) {
+            newItemModal.hide();
+            lines.push({ item: it.id, sku: it.sku, name: it.name, weight_kg: it.weight_kg, quantity: 1 });
+            renderLines();
+            F.toast('Item added.');
+        }).catch(function (err) { F.toast(F.errorText(err), 'danger'); })
+          .finally(function () { btn.disabled = false; });
+    });
+
+    // ---- new customer ----
+    document.getElementById('btnNewCustomer').addEventListener('click', function () {
+        document.getElementById('newCustomerForm').reset();
+        newCustomerModal.show();
+    });
+    document.getElementById('newCustomerForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var payload = {
+            name: document.getElementById('ncName').value.trim(),
+            sur_name: document.getElementById('ncSurname').value.trim(),
+            cnic: document.getElementById('ncCnic').value.trim(),
+            contact_number: document.getElementById('ncContact').value.trim(),
+            city: document.getElementById('ncCity').value.trim(),
+            customer_category: document.getElementById('ncCategory').value,
+            address: document.getElementById('ncAddress').value.trim()
+        };
+        var btn = document.getElementById('btnSaveNewCustomer');
+        btn.disabled = true;
+        F.post('customers/', payload).then(function (c) {
+            customersCache.push(c);
+            selectedCustomers.push({ id: c.id, name: c.full_name });
+            renderChips();
+            newCustomerModal.hide();
+            F.toast('Customer added and selected.');
+        }).catch(function (err) { F.toast(F.errorText(err), 'danger'); })
+          .finally(function () { btn.disabled = false; });
+    });
+
+    // ---- pending images (selected, not yet uploaded) with preview + remove ----
+    function clearPending() {
+        pendingImages.forEach(function (p) { URL.revokeObjectURL(p.url); });
+        pendingImages = [];
+        renderPending();
+    }
+    function renderPending() {
+        document.getElementById('pendingImages').innerHTML = pendingImages.map(function (p, i) {
+            return '<span class="ship-thumb-wrap"><img src="' + p.url + '" class="ship-thumb">'
+                + '<span class="del" data-pending="' + i + '" title="Remove">&times;</span></span>';
+        }).join('');
+    }
+    document.getElementById('shipImages').addEventListener('change', function () {
+        Array.prototype.forEach.call(this.files, function (f) {
+            pendingImages.push({ file: f, url: URL.createObjectURL(f) });
+        });
+        this.value = '';   // reset so the same/more files can be added in batches
+        renderPending();
+    });
+    document.getElementById('pendingImages').addEventListener('click', function (e) {
+        var del = e.target.closest('[data-pending]');
+        if (del) {
+            var i = +del.getAttribute('data-pending');
+            URL.revokeObjectURL(pendingImages[i].url);
+            pendingImages.splice(i, 1);
+            renderPending();
+        }
+    });
+
+    // ---- existing images (edit mode) ----
+    function renderExistingImages(images) {
+        var box = document.getElementById('existingImages');
+        if (!images || !images.length) { box.innerHTML = ''; return; }
+        box.innerHTML = images.map(function (im) {
+            return '<span class="ship-thumb-wrap"><a href="' + F.escapeHtml(im.image) + '" target="_blank">'
+                + '<img src="' + F.escapeHtml(im.image) + '" class="ship-thumb"></a>'
+                + '<span class="del" data-img="' + im.id + '" title="Delete">&times;</span></span>';
+        }).join('');
+    }
+    document.getElementById('existingImages').addEventListener('click', function (e) {
+        var del = e.target.closest('[data-img]');
+        if (del && editingId) {
+            if (confirm('Delete this photo?')) {
+                F.del('shipments/' + editingId + '/images/' + del.getAttribute('data-img') + '/').then(function () {
+                    del.closest('.ship-thumb-wrap').remove();
+                    F.toast('Photo deleted.');
+                }).catch(function (err) { F.toast(F.errorText(err), 'danger'); });
+            }
+        }
+    });
+
+    // ---- open create/edit ----
+    document.getElementById('btnAddShipment').addEventListener('click', function () {
+        editingId = null;
+        document.getElementById('shipForm').reset();
+        document.getElementById('shipModalTitle').textContent = 'New Shipment';
+        document.getElementById('shipId').value = '';
+        document.getElementById('shipCode').value = '';
+        document.getElementById('shipDate').value = today();
+        document.getElementById('existingImages').innerHTML = '';
+        selectedCustomers = []; lines = [];
+        clearPending();
+        renderChips(); renderLines();
+        shipModal.show();
+    });
+
+    function openEdit(id) {
+        F.get('shipments/' + id + '/').then(function (s) {
+            editingId = s.id;
+            document.getElementById('shipForm').reset();
+            document.getElementById('shipModalTitle').textContent = 'Edit ' + s.shipment_id;
+            document.getElementById('shipId').value = s.id;
+            document.getElementById('shipCode').value = s.shipment_id;
+            document.getElementById('shipDate').value = s.shipment_date;
+            document.getElementById('shipStatus').value = s.status;
+            document.getElementById('shipNotes').value = s.notes || '';
+            selectedCustomers = (s.customers_detail || []).map(function (c) { return { id: c.id, name: c.name }; });
+            lines = (s.items || []).map(function (it) {
+                return { item: it.item, sku: it.sku, name: it.name, weight_kg: it.weight_kg, quantity: it.quantity };
+            });
+            clearPending();
+            renderChips(); renderLines();
+            renderExistingImages(s.images);
+            shipModal.show();
+        });
+    }
+
+    document.getElementById('shipForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (!selectedCustomers.length) { F.toast('Add at least one customer.', 'warning'); return; }
+        var payload = {
+            shipment_date: document.getElementById('shipDate').value,
+            status: document.getElementById('shipStatus').value,
+            notes: document.getElementById('shipNotes').value.trim(),
+            customers: selectedCustomers.map(function (c) { return c.id; }),
+            items: lines.map(function (l) {
+                return { item: l.item || null, sku: l.sku || '', name: l.name,
+                         weight_kg: l.weight_kg || 0, quantity: parseInt(l.quantity, 10) || 1 };
+            })
+        };
+        var btn = document.getElementById('btnSaveShip');
+        btn.disabled = true;
+        var op = editingId ? F.put('shipments/' + editingId + '/', payload) : F.post('shipments/', payload);
+        op.then(function (s) {
+            if (pendingImages.length) {
+                var fd = new FormData();
+                pendingImages.forEach(function (p) { fd.append('images', p.file); });
+                return F.postForm('shipments/' + s.id + '/upload_images/', fd).then(function () { return s; });
+            }
+            return s;
+        }).then(function () {
+            shipModal.hide();
+            F.toast(editingId ? 'Shipment updated.' : 'Shipment created.');
+            load();
+        }).catch(function (err) { F.toast(F.errorText(err), 'danger'); })
+          .finally(function () { btn.disabled = false; });
+    });
+
+    // ---- view ----
+    function openView(id) {
+        viewModal.show();
+        document.getElementById('vItems').innerHTML = '';
+        document.getElementById('vImages').innerHTML = 'Loading…';
+        F.get('shipments/' + id + '/').then(function (s) {
+            document.getElementById('vTitle').textContent = s.shipment_id;
+            document.getElementById('vSub').textContent = F.date(s.shipment_date) + ' • ' + s.status_display + ' • ' + Number(s.total_weight) + ' kg';
+            document.getElementById('vCustomers').textContent = (s.customers_detail || []).map(function (c) { return c.name; }).join(', ') || '—';
+            document.getElementById('vNotes').textContent = s.notes || '—';
+            document.getElementById('vItems').innerHTML = (s.items || []).map(function (it) {
+                return '<tr><td>' + F.escapeHtml(it.name) + '</td><td>' + F.escapeHtml(it.sku || '—') + '</td><td class="num">' + Number(it.weight_kg) + '</td><td class="num">' + it.quantity + '</td></tr>';
+            }).join('') || '<tr><td colspan="4" class="fin-empty">No items.</td></tr>';
+            document.getElementById('vImages').innerHTML = (s.images || []).length
+                ? s.images.map(function (im) { return '<span class="ship-thumb-wrap"><a href="' + F.escapeHtml(im.image) + '" target="_blank"><img src="' + F.escapeHtml(im.image) + '" class="ship-thumb"></a></span>'; }).join('')
+                : '<span class="text-muted">No photos.</span>';
+        });
+    }
+
+    // ---- list ----
+    function load() {
+        rows.innerHTML = '<tr><td colspan="8" class="fin-empty">Loading…</td></tr>';
+        F.get('shipments/', filters).then(function (data) {
+            data = data || [];
+            if (!data.length) { rows.innerHTML = '<tr><td colspan="8" class="fin-empty">No shipments found.</td></tr>'; return; }
+            rows.innerHTML = data.map(function (s) {
+                var custs = (s.customers_detail || []).map(function (c) { return F.escapeHtml(c.name); }).join(', ') || '—';
+                return '<tr>'
+                    + '<td><strong>' + F.escapeHtml(s.shipment_id) + '</strong></td>'
+                    + '<td>' + F.date(s.shipment_date) + '</td>'
+                    + '<td>' + custs + '</td>'
+                    + '<td>' + statusBadge(s.status, s.status_display) + '</td>'
+                    + '<td class="num">' + (s.items ? s.items.length : 0) + '</td>'
+                    + '<td class="num">' + (s.image_count || 0) + '</td>'
+                    + '<td class="num">' + Number(s.total_weight).toLocaleString() + '</td>'
+                    + '<td class="text-end" style="white-space:nowrap">'
+                    + '<button class="btn btn-sm btn-outline-secondary me-1" data-view="' + s.id + '"><i class="fa fa-eye"></i></button>'
+                    + '<button class="btn btn-sm btn-outline-primary me-1" data-edit="' + s.id + '"><i class="fa fa-pen"></i></button>'
+                    + '<button class="btn btn-sm btn-outline-danger" data-del="' + s.id + '"><i class="fa fa-trash"></i></button>'
+                    + '</td></tr>';
+            }).join('');
+        }).catch(function () { rows.innerHTML = '<tr><td colspan="8" class="fin-empty text-danger">Failed to load shipments.</td></tr>'; });
+    }
+
+    rows.addEventListener('click', function (e) {
+        var v = e.target.closest('[data-view]'), ed = e.target.closest('[data-edit]'), d = e.target.closest('[data-del]');
+        if (v) { openView(v.getAttribute('data-view')); }
+        else if (ed) { openEdit(ed.getAttribute('data-edit')); }
+        else if (d) {
+            var id = d.getAttribute('data-del');
+            if (confirm('Delete this shipment? (Linked sale orders keep their other data.)')) {
+                F.del('shipments/' + id + '/').then(function () { F.toast('Shipment deleted.'); load(); })
+                 .catch(function (err) { F.toast(F.errorText(err), 'danger'); });
+            }
+        }
+    });
+
+    // ---- filters ----
+    document.getElementById('fFrom').addEventListener('change', function (e) { filters.from = e.target.value; load(); });
+    document.getElementById('fTo').addEventListener('change', function (e) { filters.to = e.target.value; load(); });
+    document.getElementById('fStatus').addEventListener('change', function (e) { filters.status = e.target.value; load(); });
+    var t;
+    document.getElementById('fSearch').addEventListener('input', function (e) {
+        clearTimeout(t); t = setTimeout(function () { filters.search = e.target.value.trim(); load(); }, 300);
+    });
+    document.getElementById('btnReset').addEventListener('click', function () {
+        filters = { from: '', to: '', status: '', search: '' };
+        ['fFrom', 'fTo', 'fSearch'].forEach(function (id) { document.getElementById(id).value = ''; });
+        document.getElementById('fStatus').value = '';
+        load();
+    });
+
+    loadCustomers().then(load).catch(load);
+})();
+</script>
+{% endblock %}

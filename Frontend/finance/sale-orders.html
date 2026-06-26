@@ -1,0 +1,810 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sale Orders - Syed Logistic{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/finance.css' %}" rel="stylesheet">
+<style>
+    .item-search-wrap { position: relative; }
+    .item-search-results {
+        position: absolute; z-index: 30; top: 100%; left: 0; right: 0;
+        background: #fff; border: 1px solid #e6eaf2; border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(20,40,80,.12); max-height: 260px;
+        overflow: auto; display: none;
+    }
+    .item-search-results .opt { padding: .55rem .8rem; cursor: pointer; font-size: .9rem; }
+    .item-search-results .opt:hover, .item-search-results .opt.active { background: #f4f6fb; }
+    .item-search-results .opt small { color: #9aa6b6; }
+    .item-search-results .add-new { color: #06A3DA; font-weight: 600; border-top: 1px solid #eef1f6; }
+    .line-amt, .line-wt { max-width: 130px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fin-wrap">
+    <div class="container">
+        <div class="fin-page-head">
+            <div>
+                <h1>Sale Orders</h1>
+                <div class="text-muted">Itemised sales invoices. Each order posts a receivable (debit) to the customer ledger and is knocked off by receipt vouchers.</div>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/items/" class="btn btn-outline-secondary"><i class="fa fa-boxes me-2"></i>Items</a>
+                <a href="/general-vouchers/" class="btn btn-outline-secondary"><i class="fa fa-file-invoice-dollar me-2"></i>Vouchers</a>
+                <button class="btn btn-primary" id="btnAddOrder"><i class="fa fa-plus me-2"></i>New Sale Order</button>
+            </div>
+        </div>
+
+        <div class="fin-card">
+            <div class="fin-toolbar">
+                <div>
+                    <label class="form-label">From (order date)</label>
+                    <input type="date" class="form-control" id="fFrom">
+                </div>
+                <div>
+                    <label class="form-label">To (order date)</label>
+                    <input type="date" class="form-control" id="fTo">
+                </div>
+                <div>
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="fStatus">
+                        <option value="all">All</option>
+                        <option value="open">Open (balance due)</option>
+                        <option value="settled">Settled</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Customer</label>
+                    <select class="form-select" id="fCustomer"><option value="">All customers</option></select>
+                </div>
+                <div>
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" id="fSearch" placeholder="Invoice / shipment / customer">
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary" id="btnReset"><i class="fa fa-undo me-1"></i>Reset</button>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3" id="orderSummary"></div>
+
+            <div class="table-responsive">
+                <table class="fin-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice #</th>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Shipment #</th>
+                            <th class="num">Total</th>
+                            <th class="num">Received</th>
+                            <th class="num">Outstanding</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderRows"><tr><td colspan="9" class="fin-empty">Loading…</td></tr></tbody>
+                    <tfoot id="orderFoot"></tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Sale Order modal -->
+<div class="modal fade" id="orderModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <form id="orderForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">New Sale Order</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Shipment</label>
+                            <div class="input-group">
+                                <select class="form-select" id="oShipment"><option value="">— No shipment —</option></select>
+                                <button type="button" class="btn btn-outline-primary" id="btnNewShipment" title="Quick-add shipment"><i class="fa fa-plus"></i></button>
+                            </div>
+                            <div class="form-text">Pick a shipment to limit customers to its members.</div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Customer <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <select class="form-select" id="oCustomer" required><option value="">Select customer…</option></select>
+                                <button type="button" class="btn btn-outline-primary" id="btnNewCustomer" title="Add new customer"><i class="fa fa-plus"></i></button>
+                            </div>
+                            <div class="form-text" id="oCustomerInfo"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Order Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="oDate" required>
+                        </div>
+                    </div>
+
+                    <hr class="my-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">Items</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnNewItemTop"><i class="fa fa-plus me-1"></i>New Item</button>
+                    </div>
+                    <div class="item-search-wrap mb-3">
+                        <input type="text" class="form-control" id="itemSearch" placeholder="Type SKU or name (e.g. LMS) to find items…" autocomplete="off">
+                        <div class="item-search-results" id="itemResults"></div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="fin-table" id="lineTable">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>SKU</th>
+                                    <th class="num">Weight (kg)</th>
+                                    <th class="num">Amount (Rs)</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="lineRows">
+                                <tr><td colspan="5" class="fin-empty">No items yet — search above to add.</td></tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="3" class="text-end">Total Invoice Amount</th>
+                                    <th class="num" id="lineTotal">Rs 0.00</th>
+                                    <th></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" id="oNotes" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveOrder">Save Sale Order</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- New Item (inline) modal -->
+<div class="modal fade" id="newItemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="newItemForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">SKU <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="niSku" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="niName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Weight (kg)</label>
+                            <input type="number" step="0.001" min="0" class="form-control" id="niWeight" value="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Amount (Rs)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="niAmount" value="0">
+                        </div>
+                    </div>
+                    <div class="form-text mt-2">Saved to the catalogue and added to this order.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveNewItem">Save &amp; Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- New Customer (inline) modal -->
+<div class="modal fade" id="newCustomerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form id="newCustomerForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Customer</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">First Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="ncName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Surname <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="ncSurname" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">CNIC <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="ncCnic" placeholder="00000-0000000-0" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Contact Number <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="ncContact" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">City <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="ncCity" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Customer Category <span class="text-danger">*</span></label>
+                            <select class="form-select" id="ncCategory" required>
+                                <option value="retail">Retail</option>
+                                <option value="wholesale">Wholesale</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Address <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="ncAddress" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="ncEmail">
+                        </div>
+                    </div>
+                    <div class="form-text mt-2">Saved to your customer directory and selected for this order.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveNewCustomer">Save &amp; Select</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Quick New Shipment modal -->
+<div class="modal fade" id="newShipmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="newShipmentForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Quick-add Shipment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Shipment Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="nsDate" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="nsStatus">
+                                <option value="pending">Pending</option>
+                                <option value="in_transit">In Transit</option>
+                                <option value="delivered">Delivered</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-text mt-2">A shipment ID is generated automatically. The order's customer is attached. Add items &amp; photos later on the Shipments page.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveNewShipment">Create &amp; Select</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View order modal -->
+<div class="modal fade" id="viewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title mb-0" id="vTitle">Sale Order</h5>
+                    <small class="text-muted" id="vSub"></small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3 mb-3" id="vSummary"></div>
+                <h6 class="fw-bold">Items</h6>
+                <div class="table-responsive mb-3">
+                    <table class="fin-table">
+                        <thead><tr><th>Item</th><th>SKU</th><th class="num">Weight (kg)</th><th class="num">Amount</th></tr></thead>
+                        <tbody id="vItems"></tbody>
+                    </table>
+                </div>
+                <h6 class="fw-bold">Receipts (knock-offs)</h6>
+                <div class="table-responsive">
+                    <table class="fin-table">
+                        <thead><tr><th>Voucher #</th><th>Date</th><th>Payment</th><th class="num">Amount</th></tr></thead>
+                        <tbody id="vReceipts"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/finance.js' %}"></script>
+<script>
+(function () {
+    var F = window.Finance;
+    var orderModal = new bootstrap.Modal(document.getElementById('orderModal'));
+    var newItemModal = new bootstrap.Modal(document.getElementById('newItemModal'));
+    var newCustomerModal = new bootstrap.Modal(document.getElementById('newCustomerModal'));
+    var newShipmentModal = new bootstrap.Modal(document.getElementById('newShipmentModal'));
+    var viewModal = new bootstrap.Modal(document.getElementById('viewModal'));
+    var rows = document.getElementById('orderRows');
+    var customersCache = [];
+    var lines = [];           // current order's line items
+    var shipmentItems = null; // when a shipment is selected, restrict items to these
+
+    var filters = { from: '', to: '', status: 'all', customer: '', search: '' };
+    function today() { return new Date().toISOString().slice(0, 10); }
+
+    // Fill the order's customer dropdown from a list of {id, name|full_name}.
+    function setCustomerOptions(list, selectId) {
+        var opts = '<option value="">Select customer…</option>';
+        list.forEach(function (c) {
+            opts += '<option value="' + c.id + '">'
+                + F.escapeHtml(c.full_name || c.name) + '</option>';
+        });
+        var sel = document.getElementById('oCustomer');
+        sel.innerHTML = opts;
+        sel.value = selectId || '';
+        sel.dispatchEvent(new Event('change'));
+    }
+
+    function loadCustomers() {
+        return F.get('customers/').then(function (data) {
+            customersCache = data || [];
+            setCustomerOptions(customersCache);
+            var fopts = '<option value="">All customers</option>';
+            customersCache.forEach(function (c) {
+                fopts += '<option value="' + c.id + '">' + F.escapeHtml(c.full_name) + '</option>';
+            });
+            document.getElementById('fCustomer').innerHTML = fopts;
+        });
+    }
+
+    // When a shipment is chosen, restrict the customer dropdown to its members.
+    document.getElementById('oShipment').addEventListener('change', function () {
+        var id = this.value;
+        if (!id) {
+            shipmentItems = null;            // no shipment -> full catalogue
+            setItemMode(false);
+            setCustomerOptions(customersCache);
+            return;
+        }
+        F.get('shipments/' + id + '/').then(function (s) {
+            // Restrict items to this shipment's contents (unless it has none).
+            var its = s.items || [];
+            shipmentItems = its.length ? its : null;
+            setItemMode(!!shipmentItems);
+            var custs = s.customers_detail || [];
+            if (custs.length) {
+                setCustomerOptions(custs, custs.length === 1 ? custs[0].id : '');
+            } else {
+                // Freshly created / empty shipment: allow any customer, and
+                // they'll be attached to the shipment on save.
+                setCustomerOptions(customersCache);
+                F.toast('This shipment has no customers yet — the one you pick will be added to it.', 'warning');
+            }
+        });
+    });
+
+    function kpi(label, value, cls) {
+        return '<div class="col-6 col-lg-3"><div class="fin-kpi ' + cls + '">'
+            + '<div class="label">' + label + '</div><div class="value">' + value + '</div></div></div>';
+    }
+    function renderSummary(data) {
+        var total = 0, recv = 0, out = 0;
+        data.forEach(function (o) {
+            total += Number(o.total_amount); recv += Number(o.amount_received); out += Number(o.outstanding);
+        });
+        document.getElementById('orderSummary').innerHTML =
+            kpi('Orders shown', data.length, '') +
+            kpi('Total billed', F.money(total), 'is-revenue') +
+            kpi('Received', F.money(recv), 'is-received') +
+            kpi('Outstanding', F.money(out), 'is-outstanding');
+        document.getElementById('orderFoot').innerHTML =
+            '<tr><th colspan="4" class="text-end">Totals (filtered)</th>'
+            + '<th class="num">' + F.money(total) + '</th>'
+            + '<th class="num">' + F.money(recv) + '</th>'
+            + '<th class="num">' + F.money(out) + '</th><th colspan="2"></th></tr>';
+    }
+
+    function load() {
+        rows.innerHTML = '<tr><td colspan="9" class="fin-empty">Loading…</td></tr>';
+        F.get('sale-orders/', filters).then(function (data) {
+            data = data || [];
+            renderSummary(data);
+            if (!data.length) {
+                rows.innerHTML = '<tr><td colspan="9" class="fin-empty">No sale orders match the filters.</td></tr>';
+                return;
+            }
+            rows.innerHTML = data.map(function (o) {
+                var badge = o.is_settled ? '<span class="fin-badge settled">Settled</span>' : '<span class="fin-badge due">Open</span>';
+                return '<tr>'
+                    + '<td><strong>' + F.escapeHtml(o.invoice_number) + '</strong></td>'
+                    + '<td>' + F.date(o.order_date) + '</td>'
+                    + '<td>' + F.escapeHtml(o.customer_name) + '</td>'
+                    + '<td>' + F.escapeHtml(o.shipment_number || '—') + '</td>'
+                    + '<td class="num">' + F.money(o.total_amount) + '</td>'
+                    + '<td class="num">' + F.money(o.amount_received) + '</td>'
+                    + '<td class="num">' + F.money(o.outstanding) + '</td>'
+                    + '<td>' + badge + '</td>'
+                    + '<td class="text-end"><button class="btn btn-sm btn-outline-secondary" data-view="' + o.id + '"><i class="fa fa-eye"></i></button></td>'
+                    + '</tr>';
+            }).join('');
+        }).catch(function () {
+            rows.innerHTML = '<tr><td colspan="9" class="fin-empty text-danger">Failed to load sale orders.</td></tr>';
+        });
+    }
+
+    // ---------- line item editor ----------
+    function renderLines() {
+        var body = document.getElementById('lineRows');
+        if (!lines.length) {
+            body.innerHTML = '<tr><td colspan="5" class="fin-empty">No items yet — search above to add.</td></tr>';
+        } else {
+            body.innerHTML = lines.map(function (ln, i) {
+                return '<tr>'
+                    + '<td>' + F.escapeHtml(ln.name) + '</td>'
+                    + '<td>' + F.escapeHtml(ln.sku || '—') + '</td>'
+                    + '<td class="num"><input type="number" step="0.001" min="0" class="form-control form-control-sm line-wt" data-i="' + i + '" data-f="weight_kg" value="' + ln.weight_kg + '"></td>'
+                    + '<td class="num"><input type="number" step="0.01" min="0" class="form-control form-control-sm line-amt" data-i="' + i + '" data-f="amount" value="' + ln.amount + '"></td>'
+                    + '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-rm="' + i + '"><i class="fa fa-times"></i></button></td>'
+                    + '</tr>';
+            }).join('');
+        }
+        var total = lines.reduce(function (s, l) { return s + (Number(l.amount) || 0); }, 0);
+        document.getElementById('lineTotal').textContent = F.money(total);
+    }
+
+    function addLine(ln) { lines.push(ln); renderLines(); }
+
+    document.getElementById('lineRows').addEventListener('input', function (e) {
+        var inp = e.target.closest('[data-i]');
+        if (inp) {
+            lines[+inp.getAttribute('data-i')][inp.getAttribute('data-f')] = inp.value;
+            var total = lines.reduce(function (s, l) { return s + (Number(l.amount) || 0); }, 0);
+            document.getElementById('lineTotal').textContent = F.money(total);
+        }
+    });
+    document.getElementById('lineRows').addEventListener('click', function (e) {
+        var rm = e.target.closest('[data-rm]');
+        if (rm) { lines.splice(+rm.getAttribute('data-rm'), 1); renderLines(); }
+    });
+
+    // ---------- item search dropdown ----------
+    var searchBox = document.getElementById('itemSearch');
+    var resultsBox = document.getElementById('itemResults');
+    var searchTimer;
+
+    function hideResults() { resultsBox.style.display = 'none'; }
+    function showResults(html) { resultsBox.innerHTML = html; resultsBox.style.display = 'block'; }
+
+    // Toggle between full-catalogue search and shipment-restricted search.
+    function setItemMode(restricted) {
+        document.getElementById('btnNewItemTop').style.display = restricted ? 'none' : '';
+        searchBox.placeholder = restricted
+            ? 'Search items in this shipment…'
+            : 'Type SKU or name (e.g. LMS) to find items…';
+    }
+
+    searchBox.addEventListener('input', function () {
+        var q = searchBox.value.trim();
+        clearTimeout(searchTimer);
+        if (shipmentItems) {
+            // Restricted: filter the shipment's own items client-side.
+            var ql = q.toLowerCase();
+            var html = '';
+            shipmentItems.forEach(function (si, idx) {
+                var hay = (si.name + ' ' + (si.sku || '')).toLowerCase();
+                if (!ql || hay.indexOf(ql) >= 0) {
+                    html += '<div class="opt" data-ship-idx="' + idx + '">'
+                        + F.escapeHtml(si.name) + ' <small>' + F.escapeHtml(si.sku || '')
+                        + ' • ' + Number(si.weight_kg) + 'kg • qty ' + si.quantity + '</small></div>';
+                }
+            });
+            if (!html) {
+                html = '<div class="opt text-muted" style="cursor:default">No matching items in this shipment.</div>';
+            }
+            showResults(html);
+            return;
+        }
+        searchTimer = setTimeout(function () {
+            F.get('items/', { search: q, active: 1 }).then(function (items) {
+                var html = '';
+                (items || []).forEach(function (it) {
+                    html += '<div class="opt" data-id="' + it.id + '">'
+                        + F.escapeHtml(it.name) + ' <small>' + F.escapeHtml(it.sku)
+                        + ' • ' + F.money(it.amount) + ' • ' + Number(it.weight_kg) + 'kg</small></div>';
+                });
+                html += '<div class="opt add-new"><i class="fa fa-plus me-1"></i>Add new item'
+                    + (q ? ' “' + F.escapeHtml(q) + '”' : '') + '</div>';
+                showResults(html);
+            });
+        }, 250);
+    });
+    searchBox.addEventListener('focus', function () { searchBox.dispatchEvent(new Event('input')); });
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.item-search-wrap')) { hideResults(); }
+    });
+
+    resultsBox.addEventListener('mousedown', function (e) {
+        var addNew = e.target.closest('.add-new');
+        var shipOpt = e.target.closest('[data-ship-idx]');
+        var opt = e.target.closest('.opt[data-id]');
+        if (addNew) {
+            e.preventDefault();
+            openNewItem(searchBox.value.trim());
+            hideResults();
+        } else if (shipOpt) {
+            e.preventDefault();
+            var si = shipmentItems[+shipOpt.getAttribute('data-ship-idx')];
+            if (si.item) {
+                // Pull the catalogue amount for this item; weight from the shipment line.
+                F.get('items/' + si.item + '/').then(function (it) {
+                    addLine({ item: it.id, sku: si.sku || it.sku, name: si.name || it.name,
+                              weight_kg: si.weight_kg, amount: it.amount });
+                });
+            } else {
+                addLine({ item: null, sku: si.sku, name: si.name, weight_kg: si.weight_kg, amount: 0 });
+            }
+            searchBox.value = '';
+            hideResults();
+        } else if (opt) {
+            e.preventDefault();
+            var id = +opt.getAttribute('data-id');
+            F.get('items/' + id + '/').then(function (it) {
+                addLine({ item: it.id, sku: it.sku, name: it.name, weight_kg: it.weight_kg, amount: it.amount });
+            });
+            searchBox.value = '';
+            hideResults();
+        }
+    });
+
+    // ---------- new item ----------
+    function openNewItem(prefillName) {
+        document.getElementById('newItemForm').reset();
+        document.getElementById('niWeight').value = 0;
+        document.getElementById('niAmount').value = 0;
+        if (prefillName) { document.getElementById('niName').value = prefillName; }
+        newItemModal.show();
+    }
+    document.getElementById('newItemForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var payload = {
+            sku: document.getElementById('niSku').value.trim(),
+            name: document.getElementById('niName').value.trim(),
+            weight_kg: document.getElementById('niWeight').value || 0,
+            amount: document.getElementById('niAmount').value || 0
+        };
+        var btn = document.getElementById('btnSaveNewItem');
+        btn.disabled = true;
+        F.post('items/', payload).then(function (it) {
+            newItemModal.hide();
+            addLine({ item: it.id, sku: it.sku, name: it.name, weight_kg: it.weight_kg, amount: it.amount });
+            F.toast('Item added to catalogue.');
+        }).catch(function (err) { F.toast(F.errorText(err), 'danger'); })
+          .finally(function () { btn.disabled = false; });
+    });
+
+    document.getElementById('btnNewItemTop').addEventListener('click', function () {
+        openNewItem('');
+    });
+
+    // ---------- new customer (inline) ----------
+    document.getElementById('btnNewCustomer').addEventListener('click', function () {
+        document.getElementById('newCustomerForm').reset();
+        newCustomerModal.show();
+    });
+    document.getElementById('newCustomerForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var payload = {
+            name: document.getElementById('ncName').value.trim(),
+            sur_name: document.getElementById('ncSurname').value.trim(),
+            cnic: document.getElementById('ncCnic').value.trim(),
+            contact_number: document.getElementById('ncContact').value.trim(),
+            city: document.getElementById('ncCity').value.trim(),
+            customer_category: document.getElementById('ncCategory').value,
+            address: document.getElementById('ncAddress').value.trim(),
+            email: document.getElementById('ncEmail').value.trim() || null
+        };
+        var btn = document.getElementById('btnSaveNewCustomer');
+        btn.disabled = true;
+        F.post('customers/', payload).then(function (c) {
+            // Add to caches + both dropdowns, then select on the order form.
+            customersCache.push(c);
+            var opt = new Option(c.full_name, c.id, true, true);
+            document.getElementById('oCustomer').add(opt);
+            var fopt = new Option(c.full_name, c.id);
+            document.getElementById('fCustomer').add(fopt);
+            document.getElementById('oCustomer').dispatchEvent(new Event('change'));
+            newCustomerModal.hide();
+            F.toast('Customer added and selected.');
+        }).catch(function (err) { F.toast(F.errorText(err), 'danger'); })
+          .finally(function () { btn.disabled = false; });
+    });
+
+    // Keep the underlying order modal usable after a stacked modal closes
+    // (Bootstrap drops body.modal-open when any modal hides).
+    ['newItemModal', 'newCustomerModal', 'newShipmentModal'].forEach(function (id) {
+        document.getElementById(id).addEventListener('hidden.bs.modal', function () {
+            if (document.getElementById('orderModal').classList.contains('show')) {
+                document.body.classList.add('modal-open');
+            }
+        });
+    });
+
+    // ---------- shipments dropdown ----------
+    function loadShipments() {
+        return F.get('shipments/options_list/').then(function (list) {
+            var opts = '<option value="">— No shipment —</option>';
+            (list || []).forEach(function (s) {
+                opts += '<option value="' + s.id + '">' + F.escapeHtml(s.shipment_id) + '</option>';
+            });
+            document.getElementById('oShipment').innerHTML = opts;
+        });
+    }
+    document.getElementById('btnNewShipment').addEventListener('click', function () {
+        document.getElementById('newShipmentForm').reset();
+        document.getElementById('nsDate').value = document.getElementById('oDate').value || today();
+        newShipmentModal.show();
+    });
+    document.getElementById('newShipmentForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var cust = document.getElementById('oCustomer').value;
+        var payload = {
+            shipment_date: document.getElementById('nsDate').value,
+            status: document.getElementById('nsStatus').value,
+            customers: cust ? [Number(cust)] : []
+        };
+        var btn = document.getElementById('btnSaveNewShipment');
+        btn.disabled = true;
+        F.post('shipments/', payload).then(function (s) {
+            var opt = new Option(s.shipment_id, s.id, true, true);
+            document.getElementById('oShipment').add(opt);
+            document.getElementById('oShipment').dispatchEvent(new Event('change'));
+            newShipmentModal.hide();
+            F.toast('Shipment ' + s.shipment_id + ' created and selected.');
+        }).catch(function (err) { F.toast(F.errorText(err), 'danger'); })
+          .finally(function () { btn.disabled = false; });
+    });
+
+    // ---------- create order ----------
+    document.getElementById('btnAddOrder').addEventListener('click', function () {
+        if (!customersCache.length) { F.toast('Add a customer first.', 'warning'); return; }
+        document.getElementById('orderForm').reset();
+        lines = [];
+        renderLines();
+        document.getElementById('oDate').value = today();
+        document.getElementById('oCustomerInfo').textContent = '';
+        document.getElementById('oShipment').value = '';
+        shipmentItems = null;
+        setItemMode(false);
+        loadShipments();
+        orderModal.show();
+    });
+
+    document.getElementById('oCustomer').addEventListener('change', function () {
+        var c = customersCache.find(function (x) { return String(x.id) === this.value; }.bind(this));
+        document.getElementById('oCustomerInfo').textContent = c
+            ? (c.cnic + ' • ' + c.city + ' • ' + c.contact_number + ' • ' + c.customer_category_display) : '';
+    });
+
+    document.getElementById('orderForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (!lines.length) { F.toast('Add at least one item.', 'warning'); return; }
+        var payload = {
+            customer: document.getElementById('oCustomer').value,
+            shipment: document.getElementById('oShipment').value || null,
+            order_date: document.getElementById('oDate').value,
+            notes: document.getElementById('oNotes').value.trim(),
+            items: lines.map(function (l) {
+                return { item: l.item || null, sku: l.sku || '', name: l.name,
+                         weight_kg: l.weight_kg || 0, amount: l.amount || 0 };
+            })
+        };
+        var btn = document.getElementById('btnSaveOrder');
+        btn.disabled = true;
+        F.post('sale-orders/', payload).then(function (o) {
+            function finish() {
+                orderModal.hide();
+                F.toast('Sale order ' + o.invoice_number + ' created.');
+                load();
+            }
+            var shipId = payload.shipment, custId = Number(payload.customer);
+            if (shipId && custId) {
+                // Make sure the order's customer is a member of the shipment.
+                return F.get('shipments/' + shipId + '/').then(function (sh) {
+                    var ids = (sh.customers || []).slice();
+                    if (ids.indexOf(custId) === -1) {
+                        ids.push(custId);
+                        return F.put('shipments/' + shipId + '/', {
+                            shipment_date: sh.shipment_date, status: sh.status,
+                            notes: sh.notes, customers: ids
+                        });
+                    }
+                }).then(finish, finish);
+            }
+            finish();
+        }).catch(function (err) { F.toast(F.errorText(err), 'danger'); })
+          .finally(function () { btn.disabled = false; });
+    });
+
+    // ---------- view order ----------
+    function openView(id) {
+        viewModal.show();
+        document.getElementById('vItems').innerHTML = '<tr><td colspan="4" class="fin-empty">Loading…</td></tr>';
+        document.getElementById('vReceipts').innerHTML = '<tr><td colspan="4" class="fin-empty">Loading…</td></tr>';
+        F.get('sale-orders/' + id + '/').then(function (o) {
+            document.getElementById('vTitle').textContent = 'Sale Order ' + o.invoice_number;
+            document.getElementById('vSub').textContent =
+                o.customer_name + ' • ' + F.date(o.order_date)
+                + (o.shipment_number ? ' • Shipment ' + o.shipment_number : '');
+            document.getElementById('vSummary').innerHTML =
+                kpi('Total', F.money(o.total_amount), 'is-revenue')
+                + kpi('Received', F.money(o.amount_received), 'is-received')
+                + kpi('Outstanding', F.money(o.outstanding), 'is-outstanding')
+                + kpi('Status', o.is_settled ? 'Settled' : 'Open', 'is-profit');
+            document.getElementById('vItems').innerHTML = (o.items || []).map(function (it) {
+                return '<tr><td>' + F.escapeHtml(it.name) + '</td><td>' + F.escapeHtml(it.sku || '—')
+                    + '</td><td class="num">' + Number(it.weight_kg).toLocaleString()
+                    + '</td><td class="num">' + F.money(it.amount) + '</td></tr>';
+            }).join('') || '<tr><td colspan="4" class="fin-empty">No items.</td></tr>';
+        });
+        F.get('vouchers/', { sale_order: id }).then(function (recs) {
+            recs = recs || [];
+            document.getElementById('vReceipts').innerHTML = recs.length
+                ? recs.map(function (v) {
+                    return '<tr><td>' + F.escapeHtml(v.invoice_number) + '</td><td>' + F.date(v.invoice_date)
+                        + '</td><td>' + F.escapeHtml(v.payment_type_display) + '</td><td class="num">' + F.money(v.amount) + '</td></tr>';
+                }).join('')
+                : '<tr><td colspan="4" class="fin-empty">No receipts yet. Knock off the balance from the General Vouchers page.</td></tr>';
+        });
+    }
+
+    rows.addEventListener('click', function (e) {
+        var v = e.target.closest('[data-view]');
+        if (v) { openView(v.getAttribute('data-view')); }
+    });
+
+    // ---------- filters ----------
+    document.getElementById('fFrom').addEventListener('change', function (e) { filters.from = e.target.value; load(); });
+    document.getElementById('fTo').addEventListener('change', function (e) { filters.to = e.target.value; load(); });
+    document.getElementById('fStatus').addEventListener('change', function (e) { filters.status = e.target.value; load(); });
+    document.getElementById('fCustomer').addEventListener('change', function (e) { filters.customer = e.target.value; load(); });
+    var t;
+    document.getElementById('fSearch').addEventListener('input', function (e) {
+        clearTimeout(t); t = setTimeout(function () { filters.search = e.target.value.trim(); load(); }, 300);
+    });
+    document.getElementById('btnReset').addEventListener('click', function () {
+        filters = { from: '', to: '', status: 'all', customer: '', search: '' };
+        ['fFrom', 'fTo', 'fSearch'].forEach(function (id) { document.getElementById(id).value = ''; });
+        document.getElementById('fStatus').value = 'all';
+        document.getElementById('fCustomer').value = '';
+        load();
+    });
+
+    loadCustomers().then(load).catch(load);
+})();
+</script>
+{% endblock %}

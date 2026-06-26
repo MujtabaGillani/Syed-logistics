@@ -15,8 +15,16 @@
                 <h1>Customers</h1>
                 <div class="text-muted">Manage your customer directory — one customer can hold many vouchers.</div>
             </div>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 flex-wrap">
                 <a href="/dashboard/" class="btn btn-outline-secondary"><i class="fa fa-chart-line me-2"></i>Dashboard</a>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"><i class="fa fa-download me-2"></i>Export</button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" data-export="excel"><i class="fa fa-file-excel me-2 text-success"></i>Excel (.xlsx)</a></li>
+                        <li><a class="dropdown-item" href="#" data-export="pdf"><i class="fa fa-file-pdf me-2 text-danger"></i>PDF</a></li>
+                    </ul>
+                </div>
+                <button class="btn btn-outline-secondary" id="btnImport"><i class="fa fa-upload me-2"></i>Import</button>
                 <button class="btn btn-primary" id="btnAddCustomer"><i class="fa fa-plus me-2"></i>Add Customer</button>
             </div>
         </div>
@@ -37,7 +45,7 @@
                     </select>
                 </div>
                 <div>
-                    <button class="btn btn-outline-secondary" id="btnReset"><i class="fa fa-rotate-left me-1"></i>Reset</button>
+                    <button class="btn btn-outline-secondary" id="btnReset"><i class="fa fa-undo me-1"></i>Reset</button>
                 </div>
             </div>
 
@@ -129,6 +137,60 @@
         </div>
     </div>
 </div>
+
+<!-- Ledger / statement modal -->
+<div class="modal fade" id="ledgerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title mb-0">Customer Statement</h5>
+                    <small class="text-muted" id="ledgerCustomer"></small>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <button class="btn btn-sm btn-outline-success" id="btnStmtExcel"><i class="fa fa-file-excel me-1"></i>Excel</button>
+                    <button class="btn btn-sm btn-outline-danger" id="btnStmtPdf"><i class="fa fa-file-pdf me-1"></i>PDF</button>
+                    <button type="button" class="btn-close ms-2" data-bs-dismiss="modal"></button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3 mb-3" id="ledgerSummary"></div>
+                <div class="table-responsive">
+                    <table class="fin-table">
+                        <thead><tr><th>Date</th><th>Reference</th><th>Description</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead>
+                        <tbody id="ledgerRows"></tbody>
+                    </table>
+                </div>
+                <p class="text-muted small mb-0 mt-2">Positive balance = customer owes us. This statement is derived from immutable vouchers &amp; payments.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="importForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Import Customers (Excel)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-2">Upload an <strong>.xlsx</strong> file. Row 1 must be headers. Recognised columns:</p>
+                    <code class="d-block mb-3" style="font-size:.8rem;">Name, Surname, CNIC, Contact, City, Category, Email, Address</code>
+                    <p class="text-muted small">Customers are matched by CNIC — existing ones are updated, new ones created.</p>
+                    <input type="file" class="form-control" id="importFile" accept=".xlsx" required>
+                    <div id="importResult" class="mt-3"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary" id="btnDoImport">Upload &amp; Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -163,9 +225,10 @@
                     + '<td>' + F.escapeHtml(c.city) + '</td>'
                     + '<td>' + badge(c.customer_category) + '</td>'
                     + '<td class="num">' + c.voucher_count + '</td>'
-                    + '<td class="text-end">'
-                    + '<button class="btn btn-sm btn-outline-primary me-1" data-edit="' + c.id + '"><i class="fa fa-pen"></i></button>'
-                    + '<button class="btn btn-sm btn-outline-danger" data-del="' + c.id + '"><i class="fa fa-trash"></i></button>'
+                    + '<td class="text-end" style="white-space:nowrap">'
+                    + '<button class="btn btn-sm btn-outline-secondary me-1" data-ledger="' + c.id + '" title="Statement / ledger"><i class="fa fa-book"></i></button>'
+                    + '<button class="btn btn-sm btn-outline-primary me-1" data-edit="' + c.id + '" title="Edit"><i class="fa fa-pen"></i></button>'
+                    + '<button class="btn btn-sm btn-outline-danger" data-del="' + c.id + '" title="Delete"><i class="fa fa-trash"></i></button>'
                     + '</td></tr>';
             }).join('');
         }).catch(function () {
@@ -252,7 +315,10 @@
     rows.addEventListener('click', function (e) {
         var editBtn = e.target.closest('[data-edit]');
         var delBtn = e.target.closest('[data-del]');
-        if (editBtn) {
+        var ledgerBtn = e.target.closest('[data-ledger]');
+        if (ledgerBtn) {
+            openLedger(ledgerBtn.getAttribute('data-ledger'));
+        } else if (editBtn) {
             F.get('customers/' + editBtn.getAttribute('data-edit') + '/').then(openModal);
         } else if (delBtn) {
             var id = delBtn.getAttribute('data-del');
@@ -281,6 +347,95 @@
         document.getElementById('fSearch').value = '';
         document.getElementById('fCategory').value = '';
         load();
+    });
+
+    // ---- Ledger / statement ----
+    var ledgerModal = new bootstrap.Modal(document.getElementById('ledgerModal'));
+    var currentLedgerCustomer = null;
+
+    function kpi(label, value, cls) {
+        return '<div class="col-6 col-lg-4"><div class="fin-kpi ' + cls + '">'
+            + '<div class="label">' + label + '</div><div class="value">' + value + '</div></div></div>';
+    }
+
+    function openLedger(customerId) {
+        currentLedgerCustomer = customerId;
+        document.getElementById('ledgerRows').innerHTML = '<tr><td colspan="6" class="fin-empty">Loading…</td></tr>';
+        document.getElementById('ledgerSummary').innerHTML = '';
+        ledgerModal.show();
+        F.get('customers/' + customerId + '/ledger/').then(function (d) {
+            var c = d.customer, t = d.totals;
+            document.getElementById('ledgerCustomer').textContent =
+                c.name + '  •  CNIC: ' + c.cnic + '  •  ' + c.city + '  •  ' + c.contact_number;
+            document.getElementById('ledgerSummary').innerHTML =
+                kpi('Total Debit (invoiced)', F.money(t.debit), 'is-revenue')
+                + kpi('Total Credit (paid)', F.money(t.credit), 'is-received')
+                + kpi('Closing Balance', F.money(t.balance), 'is-outstanding');
+            var body = document.getElementById('ledgerRows');
+            if (!d.lines.length) {
+                body.innerHTML = '<tr><td colspan="6" class="fin-empty">No ledger activity for this customer.</td></tr>';
+                return;
+            }
+            body.innerHTML = d.lines.map(function (ln) {
+                return '<tr><td>' + F.date(ln.date) + '</td>'
+                    + '<td>' + F.escapeHtml(ln.reference) + '</td>'
+                    + '<td>' + F.escapeHtml(ln.description) + '</td>'
+                    + '<td class="num">' + (ln.debit != null ? F.money(ln.debit) : '') + '</td>'
+                    + '<td class="num">' + (ln.credit != null ? F.money(ln.credit) : '') + '</td>'
+                    + '<td class="num"><strong>' + F.money(ln.balance) + '</strong></td></tr>';
+            }).join('');
+        }).catch(function () {
+            document.getElementById('ledgerRows').innerHTML =
+                '<tr><td colspan="6" class="fin-empty text-danger">Failed to load statement.</td></tr>';
+        });
+    }
+
+    document.getElementById('btnStmtExcel').addEventListener('click', function () {
+        if (currentLedgerCustomer) { F.download('customers/' + currentLedgerCustomer + '/statement/', { fmt: 'excel' }); }
+    });
+    document.getElementById('btnStmtPdf').addEventListener('click', function () {
+        if (currentLedgerCustomer) { F.download('customers/' + currentLedgerCustomer + '/statement/', { fmt: 'pdf' }); }
+    });
+
+    // ---- Export ----
+    document.querySelectorAll('[data-export]').forEach(function (el) {
+        el.addEventListener('click', function (e) {
+            e.preventDefault();
+            F.download('customers/export/', Object.assign({ fmt: el.getAttribute('data-export') }, filters));
+        });
+    });
+
+    // ---- Import ----
+    var importModal = new bootstrap.Modal(document.getElementById('importModal'));
+    document.getElementById('btnImport').addEventListener('click', function () {
+        document.getElementById('importForm').reset();
+        document.getElementById('importResult').innerHTML = '';
+        importModal.show();
+    });
+    document.getElementById('importForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var file = document.getElementById('importFile').files[0];
+        if (!file) { return; }
+        var fd = new FormData();
+        fd.append('file', file);
+        var btn = document.getElementById('btnDoImport');
+        btn.disabled = true;
+        F.postForm('customers/import_data/', fd).then(function (res) {
+            var html = '<div class="alert alert-success py-2 mb-2">Created: <strong>' + res.created
+                + '</strong> &middot; Updated: <strong>' + res.updated
+                + '</strong> &middot; Skipped: <strong>' + res.skipped + '</strong></div>';
+            if (res.errors && res.errors.length) {
+                html += '<div class="alert alert-warning py-2 mb-0" style="max-height:180px;overflow:auto;"><ul class="mb-0">'
+                    + res.errors.map(function (x) { return '<li>Row ' + x.row + ': ' + F.escapeHtml(x.error) + '</li>'; }).join('')
+                    + '</ul></div>';
+            }
+            document.getElementById('importResult').innerHTML = html;
+            F.toast('Import finished.');
+            load();
+        }).catch(function (err) {
+            document.getElementById('importResult').innerHTML =
+                '<div class="alert alert-danger py-2 mb-0">' + F.escapeHtml(F.errorText(err)) + '</div>';
+        }).finally(function () { btn.disabled = false; });
     });
 
     load();

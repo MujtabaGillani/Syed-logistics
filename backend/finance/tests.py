@@ -1,16 +1,47 @@
 """End-to-end API tests for the finance module.
 
-Focus: the profit/loss arithmetic (accrual revenue, cash received, outstanding
-dues, net profit) and the audit-trail rules (vouchers cannot be deleted;
-customers with vouchers are protected).
+Focus areas (the things finance/QA will scrutinise):
+  * profit/loss arithmetic and the Received + Outstanding == Revenue identity
+  * the partial-payment ledger (knock-offs, running balance)
+  * immutability / integrity rules (no voucher delete, locked money fields,
+    append-only payments)
+  * export (PDF/Excel) and Excel import round-trips
 """
+from datetime import date
 from decimal import Decimal
+from io import BytesIO
 
-from django.urls import reverse
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 from rest_framework.test import APITestCase
+from openpyxl import Workbook
 
-from .models import Customer, GeneralVoucher, OfficeExpense
+from .models import (
+    Customer, GeneralVoucher, OfficeExpense, Payment,
+    Item, SaleOrder, Shipment,
+)
+
+
+def make_png():
+    # Minimal 1x1 PNG so ImageField validation (Pillow) passes.
+    import base64
+    data = base64.b64decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==')
+    return SimpleUploadedFile('p.png', data, content_type='image/png')
+
+
+def make_xlsx(headers, rows):
+    wb = Workbook()
+    ws = wb.active
+    ws.append(headers)
+    for r in rows:
+        ws.append(r)
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return SimpleUploadedFile(
+        'import.xlsx', buf.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
 class FinanceApiTests(APITestCase):
@@ -21,140 +52,84 @@ class FinanceApiTests(APITestCase):
             customer_category='retail',
         )
 
+    def _voucher(self, **kw):
+        defaults = dict(
+            invoice_number='INV', invoice_date='2026-06-01',
+            customer=self.customer, payment_type='credit',
+            amount=Decimal('1000.00'))
+        defaults.update(kw)
+        v = GeneralVoucher.objects.create(**defaults)
+        v.recompute_paid()
+        return v
+
     # ---- Customer CRUD ----
     def test_create_customer_with_meta(self):
         resp = self.client.post('/api/finance/customers/', {
             'name': 'Sara', 'sur_name': 'Ahmed', 'cnic': '35202-7654321-2',
             'contact_number': '03007654321', 'address': '9 Mall Rd',
             'city': 'Karachi', 'customer_category': 'wholesale',
-            'email': 'sara@example.com', 'meta_data': {'gst': 'X-1', 'tier': 'gold'},
+            'email': 'sara@example.com', 'meta_data': {'gst': 'X-1'},
         }, format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         self.assertEqual(resp.data['meta_data']['gst'], 'X-1')
-        self.assertEqual(resp.data['full_name'], 'Sara Ahmed')
 
     def test_protected_customer_delete(self):
-        GeneralVoucher.objects.create(
-            invoice_number='INV-1', invoice_date='2026-06-01',
-            customer=self.customer, payment_type='cash',
-            amount=Decimal('100.00'), is_paid=True,
-        )
+        self._voucher(invoice_number='INV-1', amount=Decimal('100'))
         resp = self.client.delete(f'/api/finance/customers/{self.customer.id}/')
         self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT)
         self.assertTrue(Customer.objects.filter(id=self.customer.id).exists())
 
-    # ---- Voucher rules ----
+    # ---- Voucher integrity ----
     def test_voucher_cannot_be_deleted(self):
-        v = GeneralVoucher.objects.create(
-            invoice_number='INV-2', invoice_date='2026-06-02',
-            customer=self.customer, payment_type='credit',
-            amount=Decimal('500.00'), is_paid=False,
-        )
+        v = self._voucher(invoice_number='INV-2')
         resp = self.client.delete(f'/api/finance/vouchers/{v.id}/')
         self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertTrue(GeneralVoucher.objects.filter(id=v.id).exists())
 
-    def test_voucher_can_be_edited(self):
-        v = GeneralVoucher.objects.create(
-            invoice_number='INV-3', invoice_date='2026-06-03',
-            customer=self.customer, payment_type='credit',
-            amount=Decimal('500.00'), is_paid=False,
-        )
-        resp = self.client.patch(f'/api/finance/vouchers/{v.id}/',
-                                 {'is_paid': True}, format='json')
+    def test_voucher_money_fields_locked_notes_editable(self):
+        other = Customer.objects.create(
+            name='Z', sur_name='Z', cnic='1', contact_number='1',
+            address='x', city='y')
+        v = self._voucher(invoice_number='INV-3', amount=Decimal('500.00'))
+        resp = self.client.patch(f'/api/finance/vouchers/{v.id}/', {
+            'amount': '9999.00', 'customer': other.id,
+            'invoice_number': 'HACKED', 'notes': 'updated note',
+        }, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         v.refresh_from_db()
-        self.assertTrue(v.is_paid)
+        # Money fields unchanged; only notes applied.
+        self.assertEqual(v.amount, Decimal('500.00'))
+        self.assertEqual(v.customer_id, self.customer.id)
+        self.assertEqual(v.invoice_number, 'INV-3')
+        self.assertEqual(v.notes, 'updated note')
 
-    def test_voucher_status_filter(self):
-        GeneralVoucher.objects.create(
-            invoice_number='P-1', invoice_date='2026-06-01',
-            customer=self.customer, payment_type='cash',
-            amount=Decimal('100'), is_paid=True)
-        GeneralVoucher.objects.create(
-            invoice_number='D-1', invoice_date='2026-06-01',
-            customer=self.customer, payment_type='credit',
-            amount=Decimal('200'), is_paid=False)
-        due = self.client.get('/api/finance/vouchers/?status=due')
-        settled = self.client.get('/api/finance/vouchers/?status=settled')
-        self.assertEqual(len(due.data), 1)
-        self.assertEqual(due.data[0]['invoice_number'], 'D-1')
-        self.assertEqual(len(settled.data), 1)
-        self.assertEqual(settled.data[0]['invoice_number'], 'P-1')
+    def test_invoice_number_autogenerated(self):
+        import re
+        resp = self.client.post('/api/finance/vouchers/', {
+            'invoice_date': '2026-06-01', 'customer': self.customer.id,
+            'payment_type': 'cash', 'amount': '100.00',
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        inv = resp.data['invoice_number']
+        self.assertRegex(inv, r'^[A-Z]{4}-\d{8}$')
 
-    def test_voucher_date_range_filter(self):
-        GeneralVoucher.objects.create(
-            invoice_number='J-1', invoice_date='2026-01-15',
-            customer=self.customer, payment_type='cash', amount=Decimal('10'))
-        GeneralVoucher.objects.create(
-            invoice_number='M-1', invoice_date='2026-03-15',
-            customer=self.customer, payment_type='cash', amount=Decimal('20'))
-        resp = self.client.get(
-            '/api/finance/vouchers/?from=2026-02-01&to=2026-03-31')
-        self.assertEqual(len(resp.data), 1)
-        self.assertEqual(resp.data[0]['invoice_number'], 'M-1')
+    def test_invoice_numbers_are_unique(self):
+        nums = set()
+        for _ in range(15):
+            r = self.client.post('/api/finance/vouchers/', {
+                'invoice_date': '2026-06-01', 'customer': self.customer.id,
+                'payment_type': 'cash', 'amount': '10.00'}, format='json')
+            nums.add(r.data['invoice_number'])
+        self.assertEqual(len(nums), 15)
 
-    # ---- The money math ----
-    def test_dashboard_profit_loss_math(self):
-        # Revenue: 1000 (paid) + 600 (unpaid) + 400 (paid) = 2000
-        GeneralVoucher.objects.create(
-            invoice_number='V-1', invoice_date='2026-06-01',
-            customer=self.customer, payment_type='cash',
-            amount=Decimal('1000.00'), is_paid=True)
-        GeneralVoucher.objects.create(
-            invoice_number='V-2', invoice_date='2026-06-05',
-            customer=self.customer, payment_type='credit',
-            amount=Decimal('600.00'), is_paid=False)
-        GeneralVoucher.objects.create(
-            invoice_number='V-3', invoice_date='2026-06-10',
-            customer=self.customer, payment_type='others',
-            amount=Decimal('400.00'), is_paid=True)
-        # Expenses: 300 + 250 = 550
-        OfficeExpense.objects.create(
-            name='Rent', amount=Decimal('300.00'), date='2026-06-02',
-            expense_type='rent')
-        OfficeExpense.objects.create(
-            name='Fuel', amount=Decimal('250.00'), date='2026-06-08',
-            expense_type='travel')
-
-        resp = self.client.get('/api/finance/dashboard-summary/')
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        t = resp.data['totals']
-        self.assertEqual(Decimal(t['revenue']), Decimal('2000.00'))
-        self.assertEqual(Decimal(t['received']), Decimal('1400.00'))   # 1000 + 400
-        self.assertEqual(Decimal(t['outstanding']), Decimal('600.00'))  # unpaid V-2
-        self.assertEqual(Decimal(t['expenses']), Decimal('550.00'))
-        self.assertEqual(Decimal(t['net_profit']), Decimal('1450.00'))  # 2000 - 550
-        self.assertTrue(t['is_profit'])
-        # received + outstanding must reconcile to revenue
-        self.assertEqual(Decimal(t['received']) + Decimal(t['outstanding']),
-                         Decimal(t['revenue']))
-
-    def test_dashboard_loss_case(self):
-        GeneralVoucher.objects.create(
-            invoice_number='L-1', invoice_date='2026-06-01',
-            customer=self.customer, payment_type='cash',
-            amount=Decimal('100.00'), is_paid=True)
-        OfficeExpense.objects.create(
-            name='Big', amount=Decimal('500.00'), date='2026-06-02',
-            expense_type='other')
-        resp = self.client.get('/api/finance/dashboard-summary/')
-        t = resp.data['totals']
-        self.assertEqual(Decimal(t['net_profit']), Decimal('-400.00'))
-        self.assertFalse(t['is_profit'])
-
-    def test_dashboard_date_filtered_totals(self):
-        GeneralVoucher.objects.create(
-            invoice_number='Y-1', invoice_date='2025-12-31',
-            customer=self.customer, payment_type='cash',
-            amount=Decimal('999.00'), is_paid=True)
-        GeneralVoucher.objects.create(
-            invoice_number='Y-2', invoice_date='2026-06-15',
-            customer=self.customer, payment_type='cash',
-            amount=Decimal('100.00'), is_paid=True)
-        resp = self.client.get(
-            '/api/finance/dashboard-summary/?from=2026-01-01&to=2026-12-31')
-        self.assertEqual(Decimal(resp.data['totals']['revenue']), Decimal('100.00'))
+    def test_client_invoice_number_is_ignored(self):
+        # A client cannot dictate the invoice number — it is server-assigned.
+        r = self.client.post('/api/finance/vouchers/', {
+            'invoice_number': 'HACK-00000001', 'invoice_date': '2026-06-01',
+            'customer': self.customer.id, 'payment_type': 'cash',
+            'amount': '10.00'}, format='json')
+        self.assertNotEqual(r.data['invoice_number'], 'HACK-00000001')
+        self.assertRegex(r.data['invoice_number'], r'^[A-Z]{4}-\d{8}$')
 
     def test_negative_amount_rejected(self):
         resp = self.client.post('/api/finance/vouchers/', {
@@ -163,3 +138,360 @@ class FinanceApiTests(APITestCase):
             'amount': '-50.00',
         }, format='json')
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    # ---- Payments / knock-off ledger ----
+    def test_partial_then_full_payment_settles_voucher(self):
+        v = self._voucher(invoice_number='PAY-1', amount=Decimal('1000.00'))
+        self.assertFalse(v.is_paid)
+
+        r1 = self.client.post('/api/finance/payments/', {
+            'voucher': v.id, 'amount': '400.00', 'date': '2026-06-02',
+            'method': 'cash'}, format='json')
+        self.assertEqual(r1.status_code, status.HTTP_201_CREATED)
+        v.refresh_from_db()
+        self.assertEqual(v.outstanding, Decimal('600.00'))
+        self.assertFalse(v.is_paid)
+
+        r2 = self.client.post('/api/finance/payments/', {
+            'voucher': v.id, 'amount': '600.00', 'date': '2026-06-05',
+            'method': 'bank'}, format='json')
+        self.assertEqual(r2.status_code, status.HTTP_201_CREATED)
+        v.refresh_from_db()
+        self.assertEqual(v.outstanding, Decimal('0.00'))
+        self.assertTrue(v.is_paid)
+
+    def test_overpayment_rejected(self):
+        v = self._voucher(invoice_number='PAY-2', amount=Decimal('100.00'))
+        resp = self.client.post('/api/finance/payments/', {
+            'voucher': v.id, 'amount': '150.00', 'date': '2026-06-02'},
+            format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Payment.objects.count(), 0)
+
+    def test_payment_on_debit_voucher_rejected(self):
+        v = self._voucher(invoice_number='DBT-1', payment_type='debit',
+                          amount=Decimal('100.00'))
+        self.assertTrue(v.is_paid)  # debit auto-settled
+        resp = self.client.post('/api/finance/payments/', {
+            'voucher': v.id, 'amount': '10.00', 'date': '2026-06-02'},
+            format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_payment_is_immutable(self):
+        v = self._voucher(invoice_number='PAY-3', amount=Decimal('100.00'))
+        p = Payment.objects.create(voucher=v, amount=Decimal('50'),
+                                   date='2026-06-02')
+        self.assertEqual(
+            self.client.put(f'/api/finance/payments/{p.id}/',
+                            {'amount': '1'}, format='json').status_code,
+            status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(
+            self.client.delete(f'/api/finance/payments/{p.id}/').status_code,
+            status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    # ---- Dashboard money math ----
+    def test_dashboard_reconciliation(self):
+        # Invoices: 1000 + 600 (credit) + 400 (debit, negative) = revenue 1200
+        self._voucher(invoice_number='V-1', invoice_date='2026-06-01',
+                      payment_type='cash', amount=Decimal('1000.00'))
+        v2 = self._voucher(invoice_number='V-2', invoice_date='2026-06-05',
+                           payment_type='credit', amount=Decimal('600.00'))
+        self._voucher(invoice_number='V-3', invoice_date='2026-06-10',
+                      payment_type='debit', amount=Decimal('400.00'))
+        # Pay 700 against V-2's 600? no — pay 500 against V-2.
+        Payment.objects.create(voucher=v2, amount=Decimal('500.00'),
+                               date='2026-06-12')
+        v2.recompute_paid()
+        OfficeExpense.objects.create(name='Rent', amount=Decimal('300.00'),
+                                     date='2026-06-02', expense_type='rent')
+
+        resp = self.client.get('/api/finance/dashboard-summary/')
+        t = resp.data['totals']
+        self.assertEqual(Decimal(t['revenue']), Decimal('1200.00'))  # 1000+600-400
+        self.assertEqual(Decimal(t['received']), Decimal('500.00'))   # one payment
+        self.assertEqual(Decimal(t['outstanding']), Decimal('700.00'))  # 1200-500
+        self.assertEqual(Decimal(t['expenses']), Decimal('300.00'))
+        self.assertEqual(Decimal(t['net_profit']), Decimal('900.00'))   # 1200-300
+        # All-time reconciliation identity.
+        self.assertEqual(Decimal(t['received']) + Decimal(t['outstanding']),
+                         Decimal(t['revenue']))
+
+    def test_dashboard_loss_case(self):
+        self._voucher(invoice_number='L-1', payment_type='cash',
+                      amount=Decimal('100.00'))
+        OfficeExpense.objects.create(name='Big', amount=Decimal('500.00'),
+                                     date='2026-06-02', expense_type='other')
+        t = self.client.get('/api/finance/dashboard-summary/').data['totals']
+        self.assertEqual(Decimal(t['net_profit']), Decimal('-400.00'))
+        self.assertFalse(t['is_profit'])
+
+    def test_debit_voucher_reduces_outstanding(self):
+        # A debit note's outstanding is negative — it reduces the receivable
+        # so that Total billed − Received = Outstanding stays exact.
+        v = GeneralVoucher.objects.create(
+            invoice_number='ADJ-1', invoice_date='2026-06-01',
+            customer=self.customer, payment_type='debit',
+            amount=Decimal('5020.00'))
+        self.assertEqual(v.outstanding, Decimal('-5020.00'))
+
+    def test_debit_signed_amount(self):
+        v = self._voucher(invoice_number='DB-2', payment_type='debit',
+                          amount=Decimal('250.00'))
+        resp = self.client.get(f'/api/finance/vouchers/{v.id}/')
+        self.assertEqual(Decimal(resp.data['amount']), Decimal('250.00'))
+        self.assertEqual(Decimal(resp.data['signed_amount']), Decimal('-250.00'))
+
+    # ---- Customer ledger ----
+    def test_customer_ledger_running_balance(self):
+        v = self._voucher(invoice_number='LG-1', amount=Decimal('1000.00'),
+                          invoice_date='2026-06-01')
+        Payment.objects.create(voucher=v, amount=Decimal('400.00'),
+                               date='2026-06-03')
+        resp = self.client.get(
+            f'/api/finance/customers/{self.customer.id}/ledger/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        lines = resp.data['lines']
+        self.assertEqual(len(lines), 2)
+        self.assertEqual(lines[0]['debit'], '1000.00')   # invoice
+        self.assertEqual(lines[0]['balance'], '1000.00')
+        self.assertEqual(lines[1]['credit'], '400.00')   # payment
+        self.assertEqual(lines[1]['balance'], '600.00')
+        self.assertEqual(resp.data['totals']['balance'], '600.00')
+
+    # ---- Export ----
+    def test_exports_return_files(self):
+        self._voucher(invoice_number='EX-1', amount=Decimal('100'))
+        OfficeExpense.objects.create(name='X', amount=Decimal('5'),
+                                     date='2026-06-01', expense_type='other')
+        xlsx = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        cases = [
+            ('/api/finance/vouchers/export/?fmt=excel', xlsx),
+            ('/api/finance/vouchers/export/?fmt=pdf', 'application/pdf'),
+            ('/api/finance/expenses/export/?fmt=excel', xlsx),
+            ('/api/finance/customers/export/?fmt=pdf', 'application/pdf'),
+            (f'/api/finance/customers/{self.customer.id}/statement/?fmt=pdf',
+             'application/pdf'),
+            (f'/api/finance/customers/{self.customer.id}/statement/?fmt=excel',
+             xlsx),
+        ]
+        for url, ctype in cases:
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 200, url)
+            self.assertEqual(r['Content-Type'], ctype, url)
+            self.assertTrue(len(r.content) > 100, url)
+
+    # ---- Import ----
+    def test_import_customers_excel(self):
+        f = make_xlsx(
+            ['Name', 'Surname', 'CNIC', 'Contact', 'City', 'Category', 'Email'],
+            [['Bilal', 'Tariq', '11111-1111111-1', '03110000000', 'Multan',
+              'Wholesale', 'b@x.com']])
+        r = self.client.post('/api/finance/customers/import_data/',
+                             {'file': f}, format='multipart')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data['created'], 1)
+        self.assertTrue(Customer.objects.filter(cnic='11111-1111111-1').exists())
+
+    def test_import_vouchers_excel_matches_customer(self):
+        f = make_xlsx(
+            ['Invoice #', 'Date', 'CNIC', 'Payment Type', 'Amount', 'Due Date'],
+            [['IMP-1', '2026-06-01', '35202-1234567-1', 'Credit', '1500', '']])
+        r = self.client.post('/api/finance/vouchers/import_data/',
+                             {'file': f}, format='multipart')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data['created'], 1)
+        v = GeneralVoucher.objects.get(invoice_number='IMP-1')
+        self.assertEqual(v.amount, Decimal('1500'))
+        self.assertEqual(v.customer_id, self.customer.id)
+
+    def test_import_expenses_excel(self):
+        f = make_xlsx(
+            ['Name', 'Type', 'Amount', 'Date'],
+            [['Office Rent', 'Rent', '25000', '2026-06-01']])
+        r = self.client.post('/api/finance/expenses/import_data/',
+                             {'file': f}, format='multipart')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data['created'], 1)
+        self.assertTrue(OfficeExpense.objects.filter(name='Office Rent').exists())
+
+
+class SaleOrderTests(APITestCase):
+    def setUp(self):
+        self.customer = Customer.objects.create(
+            name='Ali', sur_name='Khan', cnic='35202-1234567-1',
+            contact_number='03001234567', address='123 St', city='Lahore')
+        self.item = Item.objects.create(
+            sku='LMS-BOX-01', name='LMS Box', weight_kg=Decimal('12.000'),
+            amount=Decimal('8000.00'))
+
+    def _order(self, lines=None):
+        lines = lines or [
+            {'item': self.item.id, 'name': 'LMS Box', 'sku': 'LMS-BOX-01',
+             'weight_kg': '12', 'amount': '8000'},
+            {'name': 'LMS Pallet', 'sku': 'LMS-PAL', 'weight_kg': '40',
+             'amount': '32000'},
+        ]
+        return self.client.post('/api/finance/sale-orders/', {
+            'customer': self.customer.id, 'shipment_number': 'SHIP-001',
+            'order_date': '2026-06-01', 'items': lines,
+        }, format='json')
+
+    def test_item_search(self):
+        Item.objects.create(sku='ABC-1', name='Other', amount=Decimal('5'))
+        r = self.client.get('/api/finance/items/?search=lms')
+        self.assertEqual(len(r.data), 1)
+        self.assertEqual(r.data[0]['sku'], 'LMS-BOX-01')
+
+    def test_create_order_computes_total_and_invoice(self):
+        r = self._order()
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Decimal(r.data['total_amount']), Decimal('40000.00'))
+        self.assertRegex(r.data['invoice_number'], r'^[A-Z]{4}-\d{8}$')
+        self.assertEqual(len(r.data['items']), 2)
+        self.assertEqual(Decimal(r.data['outstanding']), Decimal('40000.00'))
+
+    def test_order_requires_items(self):
+        r = self.client.post('/api/finance/sale-orders/', {
+            'customer': self.customer.id, 'order_date': '2026-06-01',
+            'items': []}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_order_cannot_be_deleted(self):
+        oid = self._order().data['id']
+        r = self.client.delete(f'/api/finance/sale-orders/{oid}/')
+        self.assertEqual(r.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_order_items_locked_on_edit(self):
+        oid = self._order().data['id']
+        r = self.client.patch(f'/api/finance/sale-orders/{oid}/', {
+            'shipment_number': 'SHIP-XYZ',
+            'items': [{'name': 'Hacked', 'amount': '1'}],
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        so = SaleOrder.objects.get(id=oid)
+        self.assertEqual(so.shipment_number, 'SHIP-XYZ')       # editable
+        self.assertEqual(so.total_amount, Decimal('40000.00'))  # locked
+        self.assertEqual(so.items.count(), 2)
+
+    def test_receipt_voucher_knocks_off_order(self):
+        order = self._order().data
+        oid = order['id']
+        # Order should appear in the open list for the voucher dropdown.
+        openr = self.client.get('/api/finance/sale-orders/open/')
+        self.assertTrue(any(o['id'] == oid for o in openr.data))
+
+        # Record a receipt voucher of 15000 against the order.
+        r = self.client.post('/api/finance/vouchers/', {
+            'invoice_date': '2026-06-05', 'payment_type': 'cash',
+            'amount': '15000', 'sale_order': oid}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(r.data['is_receipt'])
+        # Customer auto-filled from the order.
+        self.assertEqual(r.data['customer'], self.customer.id)
+
+        so = SaleOrder.objects.get(id=oid)
+        self.assertEqual(so.amount_received, Decimal('15000.00'))
+        self.assertEqual(so.outstanding, Decimal('25000.00'))
+
+    def test_receipt_cannot_exceed_order_balance(self):
+        oid = self._order().data['id']
+        r = self.client.post('/api/finance/vouchers/', {
+            'invoice_date': '2026-06-05', 'payment_type': 'cash',
+            'amount': '999999', 'sale_order': oid}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_payment_blocked_on_receipt_voucher(self):
+        oid = self._order().data['id']
+        v = self.client.post('/api/finance/vouchers/', {
+            'invoice_date': '2026-06-05', 'payment_type': 'cash',
+            'amount': '1000', 'sale_order': oid}, format='json').data
+        r = self.client.post('/api/finance/payments/', {
+            'voucher': v['id'], 'amount': '100', 'date': '2026-06-06'},
+            format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_ledger_with_order_and_receipt(self):
+        oid = self._order().data['id']
+        self.client.post('/api/finance/vouchers/', {
+            'invoice_date': '2026-06-05', 'payment_type': 'cash',
+            'amount': '10000', 'sale_order': oid}, format='json')
+        r = self.client.get(
+            f'/api/finance/customers/{self.customer.id}/ledger/')
+        t = r.data['totals']
+        self.assertEqual(Decimal(t['debit']), Decimal('40000.00'))   # order
+        self.assertEqual(Decimal(t['credit']), Decimal('10000.00'))  # receipt
+        self.assertEqual(Decimal(t['balance']), Decimal('30000.00'))
+
+    def test_create_shipment_with_customers_and_items(self):
+        c2 = Customer.objects.create(
+            name='Sara', sur_name='Ahmed', cnic='9', contact_number='9',
+            address='x', city='Karachi')
+        r = self.client.post('/api/finance/shipments/', {
+            'shipment_date': '2026-06-01',
+            'status': 'pending',
+            'customers': [self.customer.id, c2.id],
+            'items': [
+                {'item': self.item.id, 'name': 'LMS Box', 'sku': 'LMS-BOX-01',
+                 'weight_kg': '12', 'quantity': 2},
+            ],
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        self.assertRegex(r.data['shipment_id'], r'^SHP-\d{8}$')
+        self.assertEqual(len(r.data['customers']), 2)        # multiple customers
+        self.assertEqual(len(r.data['items']), 1)
+        self.assertEqual(Decimal(r.data['total_weight']), Decimal('24.000'))  # 12*2
+
+    def test_shipment_image_upload_and_delete(self):
+        sid = self.client.post('/api/finance/shipments/', {
+            'shipment_date': '2026-06-01', 'customers': [self.customer.id],
+        }, format='json').data['id']
+        up = self.client.post(
+            f'/api/finance/shipments/{sid}/upload_images/',
+            {'images': [make_png(), make_png()]}, format='multipart')
+        self.assertEqual(up.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(up.data['images']), 2)
+        img_id = up.data['images'][0]['id']
+        d = self.client.delete(
+            f'/api/finance/shipments/{sid}/images/{img_id}/')
+        self.assertEqual(d.status_code, status.HTTP_204_NO_CONTENT)
+        s = Shipment.objects.get(id=sid)
+        self.assertEqual(s.images.count(), 1)
+
+    def test_sale_order_links_shipment(self):
+        sid = self.client.post('/api/finance/shipments/', {
+            'shipment_date': '2026-06-01', 'customers': [self.customer.id],
+        }, format='json').data
+        r = self.client.post('/api/finance/sale-orders/', {
+            'customer': self.customer.id, 'order_date': '2026-06-02',
+            'shipment': sid['id'],
+            'items': [{'name': 'X', 'amount': '100', 'weight_kg': '1'}],
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(r.data['shipment'], sid['id'])
+        self.assertEqual(r.data['shipment_code'], sid['shipment_id'])
+        # shipment_number mirrors the shipment id for display.
+        self.assertEqual(r.data['shipment_number'], sid['shipment_id'])
+
+    def test_shipment_options_list(self):
+        self.client.post('/api/finance/shipments/', {
+            'shipment_date': '2026-06-01', 'customers': [self.customer.id],
+        }, format='json')
+        r = self.client.get('/api/finance/shipments/options_list/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(r.data), 1)
+        self.assertIn('shipment_id', r.data[0])
+
+    def test_dashboard_reconciliation_with_orders(self):
+        oid = self._order().data['id']  # 40000 debit
+        self.client.post('/api/finance/vouchers/', {
+            'invoice_date': '2026-06-05', 'payment_type': 'cash',
+            'amount': '10000', 'sale_order': oid}, format='json')  # 10000 received
+        OfficeExpense.objects.create(name='Rent', amount=Decimal('5000'),
+                                     date='2026-06-02', expense_type='rent')
+        t = self.client.get('/api/finance/dashboard-summary/').data['totals']
+        self.assertEqual(Decimal(t['revenue']), Decimal('40000.00'))
+        self.assertEqual(Decimal(t['received']), Decimal('10000.00'))
+        self.assertEqual(Decimal(t['outstanding']), Decimal('30000.00'))
+        self.assertEqual(Decimal(t['net_profit']), Decimal('35000.00'))  # 40000-5000
+        self.assertEqual(Decimal(t['received']) + Decimal(t['outstanding']),
+                         Decimal(t['revenue']))

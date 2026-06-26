@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Items - Syed Logistic{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/finance.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="fin-wrap">
+    <div class="container">
+        <div class="fin-page-head">
+            <div>
+                <h1>Items</h1>
+                <div class="text-muted">Catalogue of items used on sale orders. Search by SKU or name.</div>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/sale-orders/" class="btn btn-outline-secondary"><i class="fa fa-truck me-2"></i>Sale Orders</a>
+                <button class="btn btn-primary" id="btnAddItem"><i class="fa fa-plus me-2"></i>Add Item</button>
+            </div>
+        </div>
+
+        <div class="fin-card">
+            <div class="fin-toolbar">
+                <div>
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" id="fSearch" placeholder="SKU or name…">
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary" id="btnReset"><i class="fa fa-undo me-1"></i>Reset</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="fin-table">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Name</th>
+                            <th class="num">Weight (kg)</th>
+                            <th class="num">Amount</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemRows"><tr><td colspan="6" class="fin-empty">Loading…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="itemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="itemForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="itemModalTitle">Add Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="itemId">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">SKU <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="iSku" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="iName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Weight (kg)</label>
+                            <input type="number" step="0.001" min="0" class="form-control" id="iWeight" value="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Amount (Rs)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="iAmount" value="0">
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="iActive" checked>
+                                <label class="form-check-label" for="iActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveItem">Save Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/finance.js' %}"></script>
+<script>
+(function () {
+    var F = window.Finance;
+    var modal = new bootstrap.Modal(document.getElementById('itemModal'));
+    var rows = document.getElementById('itemRows');
+    var search = '';
+
+    function load() {
+        rows.innerHTML = '<tr><td colspan="6" class="fin-empty">Loading…</td></tr>';
+        F.get('items/', { search: search }).then(function (data) {
+            data = data || [];
+            if (!data.length) {
+                rows.innerHTML = '<tr><td colspan="6" class="fin-empty">No items found.</td></tr>';
+                return;
+            }
+            rows.innerHTML = data.map(function (it) {
+                return '<tr>'
+                    + '<td><strong>' + F.escapeHtml(it.sku) + '</strong></td>'
+                    + '<td>' + F.escapeHtml(it.name) + '</td>'
+                    + '<td class="num">' + Number(it.weight_kg).toLocaleString() + '</td>'
+                    + '<td class="num">' + F.money(it.amount) + '</td>'
+                    + '<td>' + (it.is_active ? '<span class="fin-badge settled">Active</span>' : '<span class="fin-badge others">Inactive</span>') + '</td>'
+                    + '<td class="text-end">'
+                    + '<button class="btn btn-sm btn-outline-primary me-1" data-edit="' + it.id + '"><i class="fa fa-pen"></i></button>'
+                    + '<button class="btn btn-sm btn-outline-danger" data-del="' + it.id + '"><i class="fa fa-trash"></i></button>'
+                    + '</td></tr>';
+            }).join('');
+        }).catch(function () {
+            rows.innerHTML = '<tr><td colspan="6" class="fin-empty text-danger">Failed to load items.</td></tr>';
+        });
+    }
+
+    function openModal(it) {
+        document.getElementById('itemForm').reset();
+        if (it) {
+            document.getElementById('itemModalTitle').textContent = 'Edit Item';
+            document.getElementById('itemId').value = it.id;
+            document.getElementById('iSku').value = it.sku;
+            document.getElementById('iName').value = it.name;
+            document.getElementById('iWeight').value = it.weight_kg;
+            document.getElementById('iAmount').value = it.amount;
+            document.getElementById('iActive').checked = it.is_active;
+        } else {
+            document.getElementById('itemModalTitle').textContent = 'Add Item';
+            document.getElementById('itemId').value = '';
+            document.getElementById('iActive').checked = true;
+        }
+        modal.show();
+    }
+
+    document.getElementById('btnAddItem').addEventListener('click', function () { openModal(null); });
+
+    document.getElementById('itemForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var id = document.getElementById('itemId').value;
+        var payload = {
+            sku: document.getElementById('iSku').value.trim(),
+            name: document.getElementById('iName').value.trim(),
+            weight_kg: document.getElementById('iWeight').value || 0,
+            amount: document.getElementById('iAmount').value || 0,
+            is_active: document.getElementById('iActive').checked
+        };
+        var btn = document.getElementById('btnSaveItem');
+        btn.disabled = true;
+        var op = id ? F.put('items/' + id + '/', payload) : F.post('items/', payload);
+        op.then(function () {
+            modal.hide();
+            F.toast(id ? 'Item updated.' : 'Item added.');
+            load();
+        }).catch(function (err) { F.toast(F.errorText(err), 'danger'); })
+          .finally(function () { btn.disabled = false; });
+    });
+
+    rows.addEventListener('click', function (e) {
+        var edit = e.target.closest('[data-edit]');
+        var del = e.target.closest('[data-del]');
+        if (edit) {
+            F.get('items/' + edit.getAttribute('data-edit') + '/').then(openModal);
+        } else if (del) {
+            var id = del.getAttribute('data-del');
+            if (confirm('Delete this item? (Existing sale orders keep their saved details.)')) {
+                F.del('items/' + id + '/').then(function () {
+                    F.toast('Item deleted.'); load();
+                }).catch(function (err) { F.toast(F.errorText(err), 'danger'); });
+            }
+        }
+    });
+
+    var t;
+    document.getElementById('fSearch').addEventListener('input', function (e) {
+        clearTimeout(t);
+        t = setTimeout(function () { search = e.target.value.trim(); load(); }, 300);
+    });
+    document.getElementById('btnReset').addEventListener('click', function () {
+        search = ''; document.getElementById('fSearch').value = ''; load();
+    });
+
+    load();
+})();
+</script>
+{% endblock %}
