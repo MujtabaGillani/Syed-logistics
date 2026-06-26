@@ -5,8 +5,23 @@ from rest_framework import serializers
 from .models import (
     Customer, GeneralVoucher, OfficeExpense, Payment,
     Item, SaleOrder, SaleOrderItem,
-    Shipment, ShipmentItem, ShipmentImage,
+    Shipment, ShipmentItem, ShipmentImage, Employee,
 )
+
+
+class EmployeeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Employee
+        fields = [
+            'id', 'name', 'phone_number', 'cnic', 'designation', 'salary',
+            'email', 'address', 'is_active', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_salary(self, value):
+        if value is None or value < 0:
+            raise serializers.ValidationError('Salary cannot be negative.')
+        return value
 
 
 class CustomerSerializer(serializers.ModelSerializer):

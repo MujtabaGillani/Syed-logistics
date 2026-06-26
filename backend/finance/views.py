@@ -36,7 +36,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from . import exports, imports
 from .models import (
     Customer, GeneralVoucher, OfficeExpense, Payment,
-    Item, SaleOrder, Shipment, ShipmentImage,
+    Item, SaleOrder, Shipment, ShipmentImage, Employee,
 )
 from .serializers import (
     CustomerSerializer,
@@ -48,6 +48,7 @@ from .serializers import (
     SaleOrderSerializer,
     SaleOrderUpdateSerializer,
     ShipmentSerializer,
+    EmployeeSerializer,
 )
 
 PAID_TOTAL = Coalesce(Sum('payments__amount'), Value(
@@ -222,6 +223,15 @@ class GeneralVoucherViewSet(viewsets.ModelViewSet):
         ser = PaymentSerializer(voucher.payments.all(), many=True)
         return Response(ser.data)
 
+    @action(detail=True, methods=['get'])
+    def invoice(self, request, pk=None):
+        """Download this single voucher as an invoice (?fmt=pdf|excel)."""
+        voucher = self.get_object()
+        fmt = (request.query_params.get('fmt') or 'pdf').lower()
+        if fmt == 'excel':
+            return exports.voucher_invoice_excel(voucher)
+        return exports.voucher_invoice_pdf(voucher)
+
     @action(detail=False, methods=['get'])
     def export(self, request):
         rows = self.filter_queryset(self.get_queryset())
@@ -365,6 +375,28 @@ class SaleOrderViewSet(viewsets.ModelViewSet):
             'outstanding': str(o.outstanding),
         } for o in orders]
         return Response(data)
+
+
+class EmployeeViewSet(viewsets.ModelViewSet):
+    """Full CRUD for employees. ?search= matches name/cnic/phone/designation;
+    ?active=1 limits to active staff."""
+
+    queryset = Employee.objects.all()
+    serializer_class = EmployeeSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        if params.get('active') == '1':
+            qs = qs.filter(is_active=True)
+        search = params.get('search')
+        if search:
+            qs = qs.filter(
+                dj_models.Q(name__icontains=search)
+                | dj_models.Q(cnic__icontains=search)
+                | dj_models.Q(phone_number__icontains=search)
+                | dj_models.Q(designation__icontains=search))
+        return qs
 
 
 class ShipmentViewSet(viewsets.ModelViewSet):

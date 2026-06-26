@@ -3,8 +3,17 @@ from django.contrib import admin
 from .models import (
     Customer, GeneralVoucher, OfficeExpense, Payment,
     Item, SaleOrder, SaleOrderItem,
-    Shipment, ShipmentItem, ShipmentImage,
+    Shipment, ShipmentItem, ShipmentImage, Employee,
 )
+
+
+@admin.register(Employee)
+class EmployeeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'designation', 'phone_number', 'cnic', 'salary',
+                    'is_active')
+    list_filter = ('is_active', 'designation')
+    search_fields = ('name', 'cnic', 'phone_number', 'designation')
+    list_per_page = 25
 
 
 @admin.register(Customer)

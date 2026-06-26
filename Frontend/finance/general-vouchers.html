@@ -416,6 +416,8 @@
                     + '<td>' + statusBadge(v) + '</td>'
                     + '<td class="text-end" style="white-space:nowrap">'
                     + payBtn + viewBtn
+                    + '<button class="btn btn-sm btn-outline-secondary me-1" data-dl="excel:' + v.id + '" title="Download Excel"><i class="fa fa-file-excel"></i></button>'
+                    + '<button class="btn btn-sm btn-outline-secondary me-1" data-dl="pdf:' + v.id + '" title="Download PDF invoice"><i class="fa fa-file-pdf"></i></button>'
                     + '<button class="btn btn-sm btn-outline-primary" data-edit="' + v.id + '" title="Edit (notes/due date)"><i class="fa fa-pen"></i></button>'
                     + '</td></tr>';
             }).join('');
@@ -613,6 +615,12 @@
         var edit = e.target.closest('[data-edit]');
         var pay = e.target.closest('[data-pay]');
         var view = e.target.closest('[data-payments]');
+        var dl = e.target.closest('[data-dl]');
+        if (dl) {
+            var parts = dl.getAttribute('data-dl').split(':');
+            F.download('vouchers/' + parts[1] + '/invoice/', { fmt: parts[0] });
+            return;
+        }
         if (edit) {
             F.get('vouchers/' + edit.getAttribute('data-edit') + '/').then(openModal);
         } else if (pay) {

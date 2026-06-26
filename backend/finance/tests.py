@@ -281,6 +281,17 @@ class FinanceApiTests(APITestCase):
             self.assertTrue(len(r.content) > 100, url)
 
     # ---- Import ----
+    def test_single_invoice_download(self):
+        v = self._voucher(invoice_number='INV-DL', amount=Decimal('500'))
+        Payment.objects.create(voucher=v, amount=Decimal('200'), date='2026-06-02')
+        pdf = self.client.get(f'/api/finance/vouchers/{v.id}/invoice/?fmt=pdf')
+        self.assertEqual(pdf.status_code, 200)
+        self.assertEqual(pdf['Content-Type'], 'application/pdf')
+        self.assertTrue(len(pdf.content) > 500)
+        xl = self.client.get(f'/api/finance/vouchers/{v.id}/invoice/?fmt=excel')
+        self.assertEqual(xl.status_code, 200)
+        self.assertIn('spreadsheet', xl['Content-Type'])
+
     def test_import_customers_excel(self):
         f = make_xlsx(
             ['Name', 'Surname', 'CNIC', 'Contact', 'City', 'Category', 'Email'],
@@ -313,6 +324,38 @@ class FinanceApiTests(APITestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.data['created'], 1)
         self.assertTrue(OfficeExpense.objects.filter(name='Office Rent').exists())
+
+
+class EmployeeTests(APITestCase):
+    def test_employee_crud_and_search(self):
+        r = self.client.post('/api/finance/employees/', {
+            'name': 'Bilal', 'designation': 'Driver',
+            'phone_number': '03001234567', 'cnic': '35202-1111111-1',
+            'salary': '45000', 'email': 'bilal@x.com', 'address': 'Lahore',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_201_CREATED)
+        eid = r.data['id']
+        self.assertEqual(Decimal(r.data['salary']), Decimal('45000'))
+
+        # search
+        s = self.client.get('/api/finance/employees/?search=driver')
+        self.assertEqual(len(s.data), 1)
+
+        # update
+        u = self.client.patch(f'/api/finance/employees/{eid}/',
+                              {'salary': '50000'}, format='json')
+        self.assertEqual(Decimal(u.data['salary']), Decimal('50000'))
+
+        # delete
+        d = self.client.delete(f'/api/finance/employees/{eid}/')
+        self.assertEqual(d.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_employee_negative_salary_rejected(self):
+        r = self.client.post('/api/finance/employees/', {
+            'name': 'X', 'designation': 'Y', 'phone_number': '1',
+            'cnic': '1', 'salary': '-5',
+        }, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class SaleOrderTests(APITestCase):

@@ -96,6 +96,9 @@ class ItemsView(CsrfTemplateView):
 class ShipmentsView(CsrfTemplateView):
     template_name = 'finance/shipments.html'
 
+class EmployeesView(CsrfTemplateView):
+    template_name = 'finance/employees.html'
+
 # Health check view for Docker
 def health_check(request):
     """Health check endpoint for Docker monitoring"""

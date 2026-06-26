@@ -36,6 +36,14 @@ def _money(value):
         return value
 
 
+def _pdf_safe(text):
+    """Escape text for reportlab Paragraphs (which parse XML-ish markup)."""
+    if text is None:
+        return ''
+    return (str(text).replace('&', '&amp;')
+            .replace('<', '&lt;').replace('>', '&gt;'))
+
+
 # --------------------------------------------------------------------------
 # Excel
 # --------------------------------------------------------------------------
@@ -182,6 +190,163 @@ def vouchers_pdf(rows):
               _money(total_out), '']
     return _pdf_response('General Vouchers', headers, data, 'vouchers',
                          totals_row=totals)
+
+
+# --------------------------------------------------------------------------
+# Single voucher invoice
+# --------------------------------------------------------------------------
+def voucher_invoice_excel(v):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Invoice'
+    c = v.customer
+
+    def head(r, label, value):
+        ws.cell(row=r, column=1, value=label).font = Font(bold=True)
+        ws.cell(row=r, column=2, value=value)
+
+    ws.cell(row=1, column=1, value='Syed Logistic — Invoice').font = Font(bold=True, size=14)
+    head(3, 'Invoice #', v.invoice_number)
+    head(4, 'Invoice Date', v.invoice_date.isoformat() if v.invoice_date else '')
+    head(5, 'Due Date', v.due_date.isoformat() if v.due_date else '')
+    head(6, 'Payment Type', v.get_payment_type_display())
+    head(7, 'Status', 'Settled' if v.is_paid else 'Due')
+    head(9, 'Bill To', c.full_name)
+    head(10, 'CNIC', c.cnic)
+    head(11, 'Contact', c.contact_number)
+    head(12, 'City', c.city)
+    head(13, 'Address', c.address)
+
+    r = 15
+    ws.cell(row=r, column=1, value='Amount').font = Font(bold=True)
+    ws.cell(row=r, column=2, value=float(v.signed_amount)).number_format = '#,##0.00'
+    ws.cell(row=r + 1, column=1, value='Paid').font = Font(bold=True)
+    ws.cell(row=r + 1, column=2, value=float(v.total_paid)).number_format = '#,##0.00'
+    ws.cell(row=r + 2, column=1, value='Outstanding').font = Font(bold=True)
+    ws.cell(row=r + 2, column=2, value=float(v.outstanding)).number_format = '#,##0.00'
+
+    # Payments breakdown
+    pr = r + 4
+    if v.payments.exists():
+        ws.cell(row=pr, column=1, value='Payments').font = Font(bold=True)
+        pr += 1
+        for col, h in enumerate(['Date', 'Method', 'Reference', 'Amount'], start=1):
+            cell = ws.cell(row=pr, column=col, value=h)
+            cell.font = HEADER_FONT
+            cell.fill = HEADER_FILL
+        for p in v.payments.all():
+            pr += 1
+            ws.cell(row=pr, column=1, value=p.date.isoformat())
+            ws.cell(row=pr, column=2, value=p.get_method_display())
+            ws.cell(row=pr, column=3, value=p.reference)
+            ws.cell(row=pr, column=4, value=float(p.amount)).number_format = '#,##0.00'
+
+    ws.column_dimensions['A'].width = 18
+    ws.column_dimensions['B'].width = 32
+    ws.column_dimensions['C'].width = 18
+    ws.column_dimensions['D'].width = 14
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    resp = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resp['Content-Disposition'] = \
+        f'attachment; filename="invoice-{v.invoice_number}.xlsx"'
+    return resp
+
+
+def voucher_invoice_pdf(v):
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
+        topMargin=16 * mm, bottomMargin=14 * mm)
+    styles = getSampleStyleSheet()
+    c = v.customer
+    elements = [
+        Paragraph('<b>Syed Logistic</b>', styles['Title']),
+        Paragraph('INVOICE', styles['Heading2']),
+        Spacer(1, 6),
+    ]
+
+    meta = [
+        ['Invoice #', v.invoice_number,
+         'Date', v.invoice_date.isoformat() if v.invoice_date else ''],
+        ['Status', 'Settled' if v.is_paid else 'Due',
+         'Due Date', v.due_date.isoformat() if v.due_date else '—'],
+        ['Payment Type', v.get_payment_type_display(), '', ''],
+    ]
+    mt = Table(meta, colWidths=[28 * mm, 60 * mm, 24 * mm, 50 * mm])
+    mt.setStyle(TableStyle([
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    elements.append(mt)
+    elements.append(Spacer(1, 8))
+
+    elements.append(Paragraph('<b>Bill To</b>', styles['Normal']))
+    elements.append(Paragraph(
+        f'{_pdf_safe(c.full_name)}<br/>CNIC: {_pdf_safe(c.cnic)} &nbsp; '
+        f'Contact: {_pdf_safe(c.contact_number)}<br/>'
+        f'{_pdf_safe(c.address)}, {_pdf_safe(c.city)}', styles['Normal']))
+    elements.append(Spacer(1, 12))
+
+    totals = [
+        ['Description', 'Amount'],
+        [f'{v.get_payment_type_display()} voucher {v.invoice_number}',
+         _money(v.signed_amount)],
+        ['Paid', _money(v.total_paid)],
+        ['Outstanding', _money(v.outstanding)],
+    ]
+    tt = Table(totals, colWidths=[130 * mm, 40 * mm])
+    tt.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#06A3DA')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#D5DCE5')),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#E9EEF6')),
+    ]))
+    elements.append(tt)
+
+    if v.payments.exists():
+        elements.append(Spacer(1, 12))
+        elements.append(Paragraph('<b>Payments</b>', styles['Normal']))
+        pdata = [['Date', 'Method', 'Reference', 'Amount']]
+        for p in v.payments.all():
+            pdata.append([p.date.isoformat(), p.get_method_display(),
+                          _pdf_safe(p.reference) or '—', _money(p.amount)])
+        pt = Table(pdata, colWidths=[30 * mm, 35 * mm, 65 * mm, 40 * mm])
+        pt.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#54627a')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('ALIGN', (3, 0), (3, -1), 'RIGHT'),
+            ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#D5DCE5')),
+        ]))
+        elements.append(pt)
+
+    if v.notes:
+        elements.append(Spacer(1, 12))
+        elements.append(Paragraph('<b>Notes:</b> ' + _pdf_safe(v.notes), styles['Normal']))
+
+    elements.append(Spacer(1, 16))
+    elements.append(Paragraph(
+        f'Generated {timezone.localtime().strftime("%d %b %Y, %H:%M")}',
+        styles['Normal']))
+
+    doc.build(elements)
+    buffer.seek(0)
+    resp = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+    resp['Content-Disposition'] = \
+        f'attachment; filename="invoice-{v.invoice_number}.pdf"'
+    return resp
 
 
 # --------------------------------------------------------------------------

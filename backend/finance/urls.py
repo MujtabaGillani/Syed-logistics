@@ -9,6 +9,7 @@ from .views import (
     ItemViewSet,
     SaleOrderViewSet,
     ShipmentViewSet,
+    EmployeeViewSet,
     DashboardSummaryView,
 )
 
@@ -20,6 +21,7 @@ router.register(r'payments', PaymentViewSet, basename='payment')
 router.register(r'items', ItemViewSet, basename='item')
 router.register(r'sale-orders', SaleOrderViewSet, basename='saleorder')
 router.register(r'shipments', ShipmentViewSet, basename='shipment')
+router.register(r'employees', EmployeeViewSet, basename='employee')
 
 urlpatterns = [
     path('dashboard-summary/', DashboardSummaryView.as_view(),
