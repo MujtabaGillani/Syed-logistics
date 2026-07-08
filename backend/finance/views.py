@@ -19,7 +19,7 @@ Ledger integrity
   (amount, customer, invoice no./date, payment type) are locked.
 * Payments are append-only (create + read only).
 """
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db import models as dj_models
@@ -639,6 +639,8 @@ class DashboardSummaryView(APIView):
         net_profit = revenue - total_expenses
 
         open_orders = sum(1 for o in orders if not o.is_settled)
+        customer_count = Customer.objects.count()
+        employee_count = Employee.objects.filter(is_active=True).count()
         totals = {
             'revenue': str(revenue),
             'received': str(received),
@@ -649,63 +651,124 @@ class DashboardSummaryView(APIView):
             'voucher_count': standalone.count(),
             'order_count': orders.count(),
             'expense_count': expenses.count(),
-            'customer_count': Customer.objects.count(),
+            'customer_count': customer_count,
+            'employee_count': employee_count,
             'due_count': standalone.filter(is_paid=False).count() + open_orders,
         }
 
-        # --- trailing 12-month trend (independent of the KPI date filter) ---
-        # Revenue per month = standalone voucher invoices (by invoice date)
-        # + sale order totals (by order date).
-        rev_by_month = {}
-        for row in (GeneralVoucher.objects.filter(sale_order__isnull=True)
-                    .annotate(m=TruncMonth('invoice_date')).values('m')
-                    .annotate(t=Coalesce(Sum(SIGNED_AMOUNT), ZERO))):
-            key = row['m'].date() if hasattr(row['m'], 'date') else row['m']
-            rev_by_month[key] = (rev_by_month.get(key, 0) or 0) + (row['t'] or 0)
-        for row in (SaleOrder.objects
-                    .annotate(m=TruncMonth('order_date')).values('m')
-                    .annotate(t=Coalesce(Sum('total_amount'), ZERO))):
-            key = row['m'].date() if hasattr(row['m'], 'date') else row['m']
-            rev_by_month[key] = (rev_by_month.get(key, 0) or 0) + (row['t'] or 0)
-        exp_by_month = {
-            row['m'].date() if hasattr(row['m'], 'date') else row['m']: row['t']
-            for row in OfficeExpense.objects
-            .annotate(m=TruncMonth('date'))
-            .values('m')
-            .annotate(t=Coalesce(Sum('amount'), ZERO))
+        # --- financial position snapshot (respects the KPI date filter) ---
+        # Cash / Bank split of money received, keyed off the payment method.
+        #   Cash -> method == cash;  Bank -> bank / cheque / online transfers.
+        cash_in = payments.filter(method=Payment.METHOD_CASH)\
+            .aggregate(t=Coalesce(Sum('amount'), ZERO))['t']
+        bank_in = payments.filter(method__in=[
+            Payment.METHOD_BANK, Payment.METHOD_CHEQUE, Payment.METHOD_ONLINE
+        ]).aggregate(t=Coalesce(Sum('amount'), ZERO))['t']
+        # Payable = money the business owes out. No accounts-payable model
+        # exists, so we approximate it as office expenses in the period plus
+        # the active payroll obligation (sum of active employee salaries).
+        payroll = Employee.objects.filter(is_active=True)\
+            .aggregate(t=Coalesce(Sum('salary'), ZERO))['t']
+        payable = total_expenses + payroll
+        position = {
+            'receivable': str(outstanding),
+            'payable': str(payable),
+            'cash': str(cash_in),
+            'bank': str(bank_in),
+            'users': customer_count + employee_count,
+            'customer_count': customer_count,
+            'employee_count': employee_count,
         }
-        # Received per month = payments (by payment date) + receipt vouchers
-        # (by invoice date) — cash actually collected.
-        recv_by_month = {}
-        for row in (Payment.objects
-                    .annotate(m=TruncMonth('date')).values('m')
-                    .annotate(t=Coalesce(Sum('amount'), ZERO))):
-            key = row['m'].date() if hasattr(row['m'], 'date') else row['m']
-            recv_by_month[key] = (recv_by_month.get(key, 0) or 0) + (row['t'] or 0)
-        for row in (GeneralVoucher.objects.filter(sale_order__isnull=False)
-                    .annotate(m=TruncMonth('invoice_date')).values('m')
-                    .annotate(t=Coalesce(Sum('amount'), ZERO))):
-            key = row['m'].date() if hasattr(row['m'], 'date') else row['m']
-            recv_by_month[key] = (recv_by_month.get(key, 0) or 0) + (row['t'] or 0)
 
+        # --- trend series (respects the KPI date filter) ---
+        # Reuses the same date-filtered querysets as the headline KPIs, so the
+        # chart always matches the selected range. The bucket size adapts to
+        # the span: short ranges are shown per DAY (e.g. "06 Jul"), longer ones
+        # per MONTH ("Jul 2026"). With no filter it defaults to trailing 12
+        # months.
         today = date.today()
-        months = []
-        year, month = today.year, today.month
-        for _ in range(12):
-            months.append(date(year, month, 1))
-            month -= 1
-            if month == 0:
-                month = 12
-                year -= 1
-        months.reverse()
+        end_day = date_to or today
+        if date_from and (end_day - date_from).days <= 92:
+            granularity = 'day'
+        else:
+            granularity = 'month'
+
+        def bucketize(qs, field, expr):
+            """Group a queryset into a {bucket_date: total} dict.
+
+            Day granularity groups by the (already-date) field directly —
+            TruncDate is avoided because SQLite treats it as a datetime cast
+            and raises on plain DateFields. ``order_by()`` clears the model's
+            default ordering so it can't leak into the GROUP BY."""
+            if granularity == 'day':
+                rows = (qs.order_by().values(field)
+                        .annotate(t=Coalesce(Sum(expr), ZERO)))
+                keyname = field
+            else:
+                rows = (qs.order_by().annotate(b=TruncMonth(field)).values('b')
+                        .annotate(t=Coalesce(Sum(expr), ZERO)))
+                keyname = 'b'
+            out = {}
+            for row in rows:
+                raw = row[keyname]
+                if raw is None:
+                    continue
+                key = raw.date() if hasattr(raw, 'date') else raw
+                out[key] = (out.get(key, 0) or 0) + (row['t'] or 0)
+            return out
+
+        # Revenue = standalone voucher invoices (by invoice date, signed)
+        # + sale order totals (by order date).
+        rev_by = bucketize(standalone, 'invoice_date', SIGNED_AMOUNT)
+        for k, v in bucketize(orders, 'order_date', 'total_amount').items():
+            rev_by[k] = (rev_by.get(k, 0) or 0) + v
+        exp_by = bucketize(expenses, 'date', 'amount')
+        # Received = payments (by payment date) + receipt vouchers (by invoice
+        # date) — cash actually collected.
+        recv_by = bucketize(payments, 'date', 'amount')
+        for k, v in bucketize(receipts, 'invoice_date', 'amount').items():
+            recv_by[k] = (recv_by.get(k, 0) or 0) + v
+
+        # Build the ordered list of buckets spanning the window.
+        buckets = []
+        if granularity == 'day':
+            # [from, to] inclusive, one bar per day (cap keeps payload sane).
+            d = date_from
+            while d <= end_day and len(buckets) < 400:
+                buckets.append(d)
+                d += timedelta(days=1)
+            label_fmt = '%d %b'
+        else:
+            # [start, end] inclusive, one bar per month.
+            end = date(end_day.year, end_day.month, 1)
+            if date_from:
+                start = date(date_from.year, date_from.month, 1)
+            else:
+                year, month = end.year, end.month
+                for _ in range(11):
+                    month -= 1
+                    if month == 0:
+                        month = 12
+                        year -= 1
+                start = date(year, month, 1)
+            year, month = start.year, start.month
+            while date(year, month, 1) <= end and len(buckets) < 120:
+                buckets.append(date(year, month, 1))
+                month += 1
+                if month == 13:
+                    month = 1
+                    year += 1
+            label_fmt = '%b %Y'
+        if not buckets:
+            buckets = [end_day]
 
         series = {'labels': [], 'revenue': [], 'received': [],
-                  'expenses': [], 'profit': []}
-        for m in months:
-            rev = rev_by_month.get(m, 0) or 0
-            exp = exp_by_month.get(m, 0) or 0
-            recv = recv_by_month.get(m, 0) or 0
-            series['labels'].append(m.strftime('%b %Y'))
+                  'expenses': [], 'profit': [], 'granularity': granularity}
+        for b in buckets:
+            rev = rev_by.get(b, 0) or 0
+            exp = exp_by.get(b, 0) or 0
+            recv = recv_by.get(b, 0) or 0
+            series['labels'].append(b.strftime(label_fmt))
             series['revenue'].append(float(rev))
             series['received'].append(float(recv))
             series['expenses'].append(float(exp))
@@ -724,6 +787,7 @@ class DashboardSummaryView(APIView):
 
         return Response({
             'totals': totals,
+            'position': position,
             'monthly': series,
             'expense_breakdown': breakdown,
         })
