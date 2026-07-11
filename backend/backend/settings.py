@@ -99,18 +99,34 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASE_PATH = BASE_DIR / os.getenv('DATABASE_PATH', 'data/db.sqlite3')
+# Select the database backend based on the ENVIRONMENT variable.
+# Defaults to 'dev' (SQLite); set ENVIRONMENT=prod to use PostgreSQL.
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'dev').strip().lower()
 
-# Make sure the directory that holds the SQLite file exists, otherwise
-# sqlite3 raises "unable to open database file".
-DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': DATABASE_PATH,
+if ENVIRONMENT == 'prod':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('POSTGRES_DB'),
+            'USER': os.environ.get('POSTGRES_USER'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
+            'HOST': os.environ.get('POSTGRES_HOST'),
+            'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+        }
     }
-}
+else:
+    DATABASE_PATH = BASE_DIR / os.getenv('DATABASE_PATH', 'data/db.sqlite3')
+
+    # Make sure the directory that holds the SQLite file exists, otherwise
+    # sqlite3 raises "unable to open database file".
+    DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': DATABASE_PATH,
+        }
+    }
 
 
 # Password validation
