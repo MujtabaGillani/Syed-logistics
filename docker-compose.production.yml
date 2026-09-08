@@ -1,0 +1,30 @@
+services:
+  web:
+    build: .
+    container_name: syed_web
+    env_file:
+      - .env
+    volumes:
+      - ./backend/staticfiles:/app/staticfiles
+    networks:
+      - default
+      - proxy_net
+    restart: always
+
+  db:
+    image: postgres:15
+    container_name: syed_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:5433:5432"
+    restart: always
+
+networks:
+  proxy_net:
+    external: true
+
+volumes:
+  postgres_data:
