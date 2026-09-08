@@ -41,7 +41,11 @@ jobs:
               echo "LFS_DEPLOY_TOKEN is not configured."
               exit 1
             fi
-            git -c credential.helper= -c 'credential.helper=!f() { echo username=x-access-token; echo password="$LFS_DEPLOY_TOKEN"; }; f' lfs pull origin main
+            lfs_credentials_file="$(mktemp)"
+            trap 'rm -f "$lfs_credentials_file"' EXIT
+            printf 'https://x-access-token:%s@github.com\n' "$LFS_DEPLOY_TOKEN" > "$lfs_credentials_file"
+            chmod 600 "$lfs_credentials_file"
+            git -c credential.helper= -c "credential.helper=store --file=$lfs_credentials_file" lfs pull origin main
             docker compose -f docker-compose.production.yml down
             docker compose -f docker-compose.production.yml up --build --detach
             docker compose -f docker-compose.production.yml ps
