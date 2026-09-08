@@ -18,6 +18,8 @@ jobs:
     name: Rebuild and restart Docker stack
     runs-on: ubuntu-latest
     environment: production
+    env:
+      LFS_DEPLOY_TOKEN: ${{ secrets.LFS_DEPLOY_TOKEN }}
 
     steps:
       - name: Deploy over SSH
@@ -27,6 +29,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
+          envs: LFS_DEPLOY_TOKEN
           script: |
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -34,7 +37,11 @@ jobs:
             git checkout --force main
             git reset --hard origin/main
             git lfs install --local
-            git lfs pull origin main
+            if [ -z "${LFS_DEPLOY_TOKEN:-}" ]; then
+              echo "LFS_DEPLOY_TOKEN is not configured."
+              exit 1
+            fi
+            git -c credential.helper= -c 'credential.helper=!f() { echo username=x-access-token; echo password="$LFS_DEPLOY_TOKEN"; }; f' lfs pull origin main
             docker compose -f docker-compose.production.yml down
             docker compose -f docker-compose.production.yml up --build --detach
             docker compose -f docker-compose.production.yml ps
