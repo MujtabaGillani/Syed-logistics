@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}About Us - Logistica{% endblock %}
+{% block title %}About Syed Logistic{% endblock %}
 
 {% block content %}
 <!-- Page Header Start -->
@@ -21,35 +21,42 @@
 
 
 <!-- About Start -->
-<div class="container-fluid overflow-hidden py-5 px-lg-0">
-    <div class="container about py-5 px-lg-0">
+<section class="container-fluid overflow-hidden about-story py-5 px-lg-0">
+    <div class="container about-story__inner py-5 px-lg-0">
         <div class="row g-5 mx-lg-0">
             <div class="col-lg-6 ps-lg-0 wow fadeInLeft" data-wow-delay="0.1s" style="min-height: 400px;">
-                <div class="position-relative h-100">
-                    <img class="position-absolute img-fluid w-100 h-100" src="{% static 'img/about.jpg' %}" style="object-fit: cover;" alt="">
+                <div class="about-story__media position-relative h-100">
+                    <video class="content-preview position-absolute w-100 h-100" muted loop playsinline preload="metadata" poster="{% static 'img/about.jpg' %}" aria-label="Packaging and cargo handling in motion">
+                        <source src="{% static 'video/about-us-packaging.mp4' %}" type="video/mp4">
+                    </video>
+                    <div class="about-story__media-label"><i class="fa fa-route"></i><span>From pickup<br>to delivery</span></div>
                 </div>
             </div>
             <div class="col-lg-6 about-text wow fadeInUp" data-wow-delay="0.3s">
-                <h6 class="text-secondary text-uppercase mb-3">About Us</h6>
-                <h1 class="mb-5">Comprehensive Logistic Solutions</h1>
-                <p class="mb-5">Syed Logistic has been at the forefront of the Logistic industry for over three decades, providing innovative solutions that connect businesses worldwide. Our commitment to excellence, reliability, and customer satisfaction has made us a trusted partner for companies across all industries.</p>
-                <div class="row g-4 mb-5">
-                    <div class="col-sm-6 wow fadeIn" data-wow-delay="0.5s">
-                        <i class="fa fa-globe fa-3x text-primary mb-3"></i>
-                        <h5>Global Coverage</h5>
-                        <p class="m-0">Our network spans over 150 countries with strategic partnerships ensuring seamless Logistic operations worldwide.</p>
+                <div class="about-story__copy">
+                    <h6 class="text-secondary text-uppercase mb-3">About Syed Logistic</h6>
+                    <h1>Freight support built around your business</h1>
+                    <p class="about-story__lead">We bring freight, customs, storage, and delivery coordination together so you have one reliable point of contact. Clear decisions. Careful handling. Cargo that keeps moving.</p>
+                    <div class="row g-3 mb-4">
+                        <div class="col-sm-6 wow fadeIn" data-wow-delay="0.5s">
+                            <div class="about-story__point">
+                                <i class="fa fa-globe"></i>
+                                <div><h5>Connected network</h5><p>Trusted freight partners and local knowledge at every handover.</p></div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 wow fadeIn" data-wow-delay="0.7s">
+                            <div class="about-story__point">
+                                <i class="fa fa-shipping-fast"></i>
+                                <div><h5>Proactive updates</h5><p>Clear planning and shipment visibility from start to finish.</p></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-sm-6 wow fadeIn" data-wow-delay="0.7s">
-                        <i class="fa fa-shipping-fast fa-3x text-primary mb-3"></i>
-                        <h5>On Time Delivery</h5>
-                        <p class="m-0">We guarantee on-time delivery with our advanced tracking systems and dedicated Logistic planning teams.</p>
-                    </div>
+                    <a href="{% url 'service' %}" class="btn btn-primary py-3 px-5">Explore our services <i class="fa fa-arrow-right ms-2"></i></a>
                 </div>
-                <a href="" class="btn btn-primary py-3 px-5">Explore More</a>
             </div>
         </div>
     </div>
-</div>
+</section>
 <!-- About End -->
 
 
@@ -58,9 +65,9 @@
     <div class="container py-5">
         <div class="row g-5">
             <div class="col-lg-6 wow fadeInUp" data-wow-delay="0.1s">
-                <h6 class="text-secondary text-uppercase mb-3">Some Facts</h6>
-                <h1 class="mb-5">Leading the Way in Global Logistic</h1>
-                <p class="mb-5">With over 30 years of experience, we have established ourselves as a premier Logistic provider, handling millions of shipments annually. Our state-of-the-art facilities and experienced team ensure that every shipment is handled with the utmost care and efficiency.</p>
+                <h6 class="text-secondary text-uppercase mb-3">Why clients choose us</h6>
+                <h1 class="mb-5">A partner who stays close to the shipment</h1>
+                <p class="mb-5">Freight is rarely just a booking. It is timing, documentation, handovers, and clear communication. Our team stays involved across those details to help reduce uncertainty and keep your operation moving.</p>
                 <div class="d-flex align-items-center">
                     <i class="fa fa-headphones fa-2x flex-shrink-0 bg-primary p-3 text-white"></i>
                     <div class="ps-4">

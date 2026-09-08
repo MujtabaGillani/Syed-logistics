@@ -4,88 +4,88 @@
 {% block title %}Home - Syed Logistic{% endblock %}
 
 {% block content %}
-<!-- Carousel Start -->
-<div class="container-fluid p-0 pb-5">
-    <div class="owl-carousel header-carousel position-relative mb-5">
-        <div class="owl-carousel-item position-relative">
-            <img class="img-fluid" src="{% static 'img/carousel-1.jpg' %}" alt="">
-            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center" style="background: rgba(6, 3, 21, .5);">
-                <div class="container">
-                    <div class="row justify-content-start">
-                        <div class="col-10 col-lg-8">
-                            <h5 class="text-white text-uppercase mb-3 animated slideInDown">Global Logistic Solutions</h5>
-                            <h1 class="display-3 text-white animated slideInDown mb-4">Your Trusted <span class="text-primary">Logistic</span> Partner</h1>
-                            <p class="fs-5 fw-medium text-white mb-4 pb-2">Syed Logistic provides comprehensive shipping and Logistic solutions worldwide. We specialize in air freight, ocean freight, and road transportation with real-time tracking and 24/7 customer support.</p>
-                            <a href="/service/" class="btn btn-primary py-md-3 px-md-5 me-3 animated slideInLeft">Our Services</a>
-                            <a href="/quote/" class="btn btn-secondary py-md-3 px-md-5 animated slideInRight">Get Free Quote</a>
-                        </div>
-                    </div>
+<!-- Video Hero Start -->
+<section class="video-hero" aria-label="Syed Logistic introduction">
+    <video class="video-hero__media is-active" autoplay muted loop playsinline preload="auto" poster="{% static 'img/carousel-1.jpg' %}">
+        <source src="{% static 'video/logistics-hero.mp4' %}" type="video/mp4">
+    </video>
+    <video class="video-hero__media" muted loop playsinline preload="metadata" poster="{% static 'img/carousel-2.jpg' %}">
+        <source src="{% static 'video/air-freight.mp4' %}" type="video/mp4">
+    </video>
+    <video class="video-hero__media" muted loop playsinline preload="metadata" poster="{% static 'img/carousel-1.jpg' %}">
+        <source src="{% static 'video/warehouse.mp4' %}" type="video/mp4">
+    </video>
+    <div class="video-hero__overlay"></div>
+    <div class="video-hero__grid" aria-hidden="true"></div>
+    <div class="container video-hero__content">
+        <div class="row align-items-center">
+            <div class="col-xl-8 col-lg-9">
+                <div class="hero-eyebrow"><span></span> Freight forwarding, made personal</div>
+                <h1>Your cargo.<br><span>Our commitment.</span></h1>
+                <p>From booking to delivery, Syed Logistic brings freight, clearance, and support into one clear plan—so you always know what moves next.</p>
+                <div class="hero-actions">
+                    <a href="/quote/" class="btn btn-primary">Get a free quote <i class="fa fa-arrow-right ms-2"></i></a>
+                    <a href="/service/" class="hero-link">Explore our services <i class="fa fa-arrow-right"></i></a>
                 </div>
             </div>
         </div>
-        <div class="owl-carousel-item position-relative">
-            <img class="img-fluid" src="{% static 'img/carousel-2.jpg' %}" alt="">
-            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center" style="background: rgba(6, 3, 21, .5);">
-                <div class="container">
-                    <div class="row justify-content-start">
-                        <div class="col-10 col-lg-8">
-                            <h5 class="text-white text-uppercase mb-3 animated slideInDown">Fast & Reliable Shipping</h5>
-                            <h1 class="display-3 text-white animated slideInDown mb-4">Worldwide <span class="text-primary">Delivery</span> Services</h1>
-                            <p class="fs-5 fw-medium text-white mb-4 pb-2">Experience seamless Logistic with our advanced tracking systems and dedicated customer service. We ensure your cargo reaches its destination safely and on time, every time.</p>
-                            <a href="/about/" class="btn btn-primary py-md-3 px-md-5 me-3 animated slideInLeft">About Us</a>
-                            <a href="/contact/" class="btn btn-secondary py-md-3 px-md-5 animated slideInRight">Contact Us</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="hero-proof" aria-label="Company highlights">
+            <div><strong>24/7</strong><span>Customer support</span></div>
+            <div><strong>Global</strong><span>Freight network</span></div>
+            <div><strong>Live</strong><span>Shipment tracking</span></div>
         </div>
     </div>
-</div>
-<!-- Carousel End -->
+    <button class="video-hero__control" type="button" aria-label="Pause background video" aria-pressed="false">
+        <i class="fa fa-pause" aria-hidden="true"></i><span>Pause motion</span>
+    </button>
+    <div class="video-hero__pagination" aria-label="Background video selection">
+        <button class="is-active" type="button" aria-label="Show ocean freight video" aria-current="true"></button>
+        <button type="button" aria-label="Show air freight video"></button>
+        <button type="button" aria-label="Show warehouse video"></button>
+    </div>
+    <a class="video-hero__scroll" href="#about-home">Scroll to discover <span></span></a>
+</section>
+<!-- Video Hero End -->
 
 
 <!-- About Start -->
-<div class="container-xxl py-5">
+<section class="container-xxl py-5 home-intro" id="about-home">
     <div class="container py-5">
-        <div class="row g-5">
-            <div class="col-lg-6 wow fadeInUp" data-wow-delay="0.1s">
-                <h6 class="text-secondary text-uppercase mb-3">About Us</h6>
-                <h1 class="mb-5">Your Global Logistic Partner Since 1990</h1>
-                <p class="mb-5">Syed Logistic has been delivering excellence in shipping and Logistic for over three decades. We provide end-to-end solutions including air freight, ocean freight, road transportation, customs clearance, and warehousing services across the globe.</p>
-                <div class="d-flex align-items-center">
-                    <i class="fa fa-headphones fa-2x flex-shrink-0 bg-primary p-3 text-white"></i>
-                    <div class="ps-4">
-                        <h6>Call for any query!</h6>
-                        <h3 class="text-primary m-0">+92 329 8756 059</h3>
+        <div class="home-intro__panel">
+            <div class="row g-5 align-items-center">
+                <div class="col-lg-6 wow fadeInUp" data-wow-delay="0.1s">
+                    <div class="home-intro__copy">
+                        <h6 class="text-secondary text-uppercase mb-3">About Syed Logistic</h6>
+                        <h1>One team. Every stage of the journey.</h1>
+                        <p>Syed Logistic brings air, ocean, road, customs, and warehousing together under one responsive team—so you have more clarity from collection to delivery.</p>
+                        <a class="home-intro__contact" href="tel:+923298756059">
+                            <span><i class="fa fa-headphones"></i></span>
+                            <small>Need to move something?</small>
+                            <strong>+92 329 8756 059 <i class="fa fa-arrow-right"></i></strong>
+                        </a>
                     </div>
                 </div>
-            </div>
-            <div class="col-lg-6">
-                <div class="row g-4 align-items-center">
-                    <div class="col-sm-6">
-                        <div class="bg-primary p-4 mb-4 wow fadeIn" data-wow-delay="0.3s">
-                            <i class="fa fa-users fa-2x text-white mb-3"></i>
-                            <h2 class="text-white mb-2" data-toggle="counter-up">12000</h2>
-                            <p class="text-white mb-0">Happy Clients</p>
+                <div class="col-lg-6 wow fadeInRight" data-wow-delay="0.2s">
+                    <div class="home-metrics" aria-label="Syed Logistic highlights">
+                        <div class="home-metric home-metric--primary">
+                            <i class="fa fa-users"></i>
+                            <strong data-toggle="counter-up">12000</strong><span>Clients served</span>
                         </div>
-                        <div class="bg-secondary p-4 wow fadeIn" data-wow-delay="0.5s">
-                            <i class="fa fa-ship fa-2x text-white mb-3"></i>
-                            <h2 class="text-white mb-2" data-toggle="counter-up">3215</h2>
-                            <p class="text-white mb-0">Complete Shipments</p>
+                        <div class="home-metric home-metric--dark">
+                            <i class="fa fa-ship"></i>
+                            <strong data-toggle="counter-up">3215</strong><span>Shipments completed</span>
                         </div>
-                    </div>
-                    <div class="col-sm-6">
-                        <div class="bg-success p-4 wow fadeIn" data-wow-delay="0.7s">
-                            <i class="fa fa-star fa-2x text-white mb-3"></i>
-                            <h2 class="text-white mb-2" data-toggle="counter-up">12506</h2>
-                            <p class="text-white mb-0">Customer Satisfaction</p>
+                        <div class="home-metric home-metric--outline">
+                            <i class="fa fa-star"></i>
+                            <strong data-toggle="counter-up">12506</strong><span>Customer moments</span>
                         </div>
+                        <div class="home-metrics__note"><i class="fa fa-circle"></i> Live support when it matters</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+</section>
 <!-- About End -->
 
 
@@ -106,4 +106,60 @@
 <!-- Testimonial Start -->
 {% include 'includes/testimonial-section.html' %}
 <!-- Testimonial End -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const videos = Array.from(document.querySelectorAll('.video-hero__media'));
+        const pagination = Array.from(document.querySelectorAll('.video-hero__pagination button'));
+        const control = document.querySelector('.video-hero__control');
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        let activeIndex = 0;
+        let rotation;
+
+        function setMotion(isPaused) {
+            if (isPaused) {
+                videos.forEach(function (video) { video.pause(); });
+                clearInterval(rotation);
+            } else {
+                videos[activeIndex].play().catch(function () {});
+                startRotation();
+            }
+            control.setAttribute('aria-pressed', isPaused);
+            control.setAttribute('aria-label', isPaused ? 'Play background video' : 'Pause background video');
+            control.querySelector('i').className = isPaused ? 'fa fa-play' : 'fa fa-pause';
+            control.querySelector('span').textContent = isPaused ? 'Play motion' : 'Pause motion';
+        }
+
+        function showVideo(index) {
+            videos[activeIndex].classList.remove('is-active');
+            videos[activeIndex].pause();
+            activeIndex = index;
+            videos[activeIndex].classList.add('is-active');
+            pagination.forEach(function (dot, dotIndex) {
+                dot.classList.toggle('is-active', dotIndex === activeIndex);
+                dot.setAttribute('aria-current', dotIndex === activeIndex ? 'true' : 'false');
+            });
+            if (control.getAttribute('aria-pressed') !== 'true') videos[activeIndex].play().catch(function () {});
+        }
+
+        function startRotation() {
+            clearInterval(rotation);
+            rotation = setInterval(function () { showVideo((activeIndex + 1) % videos.length); }, 12000);
+        }
+
+        if (videos.length && control) {
+            if (reduceMotion.matches) setMotion(true);
+            else startRotation();
+            control.addEventListener('click', function () { setMotion(control.getAttribute('aria-pressed') !== 'true'); });
+            pagination.forEach(function (dot, index) {
+                dot.addEventListener('click', function () {
+                    showVideo(index);
+                    if (control.getAttribute('aria-pressed') !== 'true') startRotation();
+                });
+            });
+        }
+    });
+</script>
 {% endblock %}

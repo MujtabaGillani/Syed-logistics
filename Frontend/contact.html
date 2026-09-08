@@ -1,11 +1,14 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Contact Us - Logistica{% endblock %}
+{% block title %}Contact Syed Logistic{% endblock %}
 
 {% block content %}
 <!-- Page Header Start -->
-<div class="container-fluid page-header py-5" style="margin-bottom: 6rem;">
+<div class="container-fluid page-header video-page-header py-5" style="margin-bottom: 6rem;">
+    <video class="video-page-header__media content-preview" muted loop playsinline preload="metadata" poster="{% static 'img/carousel-1.jpg' %}" aria-hidden="true">
+        <source src="{% static 'video/7706750-uhd_4096_2160.mp4' %}" type="video/mp4">
+    </video>
     <div class="container py-5">
         <h1 class="display-3 text-white mb-3 animated slideInDown">Contact Us</h1>
         <nav aria-label="breadcrumb animated slideInDown">
@@ -22,12 +25,12 @@
 
 <!-- Contact Start -->
 <div class="container-fluid overflow-hidden py-5 px-lg-0">
-    <div class="container contact-page py-5 px-lg-0">
+    <div class="container contact-page contact-showcase py-5 px-lg-0">
         <div class="row g-5 mx-lg-0">
             <div class="col-md-6 contact-form wow fadeIn" data-wow-delay="0.1s">
-                <h6 class="text-secondary text-uppercase">Get In Touch</h6>
-                <h1 class="mb-4">Contact For Any Query</h1>
-                <p class="mb-4">Ready to ship with confidence? Contact our Logistic experts for personalized shipping solutions, competitive quotes, and professional guidance. We're here to help with all your transportation needs.</p>
+                <h6 class="text-secondary text-uppercase">Start a conversation</h6>
+                <h1 class="mb-4">Tell us what needs to move.</h1>
+                <p class="mb-4">Share your route, cargo, and timing. Our team will help you identify the practical next step—whether you need a quote, customs guidance, or a complete freight plan.</p>
                 <form>
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -44,26 +47,26 @@
                         </div>
                         <div class="col-12">
                             <div class="form-floating">
-                                <input type="text" class="form-control" id="subject" placeholder="Subject">
-                                <label for="subject">Subject</label>
+                                <input type="text" class="form-control" id="subject" placeholder="How can we help?">
+                                <label for="subject">How can we help?</label>
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="form-floating">
-                                <textarea class="form-control" placeholder="Leave a message here" id="message" style="height: 100px"></textarea>
-                                <label for="message">Message</label>
+                                <textarea class="form-control" placeholder="Route, cargo, timeframe, or question" id="message" style="height: 120px"></textarea>
+                                <label for="message">Route, cargo, timeframe, or question</label>
                             </div>
                         </div>
                         <div class="col-12">
-                            <button class="btn btn-primary w-100 py-3" type="submit">Send Message</button>
+                            <button class="btn btn-primary w-100 py-3" type="submit">Send your enquiry <i class="fa fa-arrow-right ms-2"></i></button>
                         </div>
                     </div>
                 </form>
             </div>
             <div class="col-md-6 contact-info wow fadeIn" data-wow-delay="0.5s">
-                <h6 class="text-secondary text-uppercase">Contact Info</h6>
-                <h1 class="mb-4">Get In Touch</h1>
-                <p class="mb-4">Connect with our Logistic specialists for expert advice on shipping, customs clearance, warehousing, and supply chain solutions. We're available 24/7 to support your business needs.</p>
+                <h6 class="text-secondary text-uppercase">Direct support</h6>
+                <h1 class="mb-4">Speak with a logistics specialist.</h1>
+                <p class="mb-4">Get help with freight, customs clearance, warehousing, or supply-chain coordination from a team that understands the details behind each shipment.</p>
                 <div class="d-flex mb-4">
                     <div class="flex-shrink-0 btn-square bg-primary rounded-circle" style="width: 64px; height: 64px;">
                         <i class="fa fa-map-marker-alt text-white"></i>

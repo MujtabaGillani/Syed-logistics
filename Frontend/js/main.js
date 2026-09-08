@@ -109,6 +109,31 @@
     //         }
     //     }
     // });
+
+    // Service previews run continuously to keep the service grid lively.
+    const serviceVideos = document.querySelectorAll('.service-preview');
+    const featureVideos = document.querySelectorAll('.feature-preview, .content-preview');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (!reduceMotion.matches) {
+        serviceVideos.forEach(function (video) {
+            video.play().catch(function () {});
+        });
+    }
+
+    // The feature panel is a single large video, so it can safely play while in view.
+    if (featureVideos.length && !reduceMotion.matches && 'IntersectionObserver' in window) {
+        const featureVideoObserver = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                const video = entry.target;
+                if (entry.isIntersecting) {
+                    video.play().catch(function () {});
+                } else {
+                    video.pause();
+                }
+            });
+        }, { threshold: 0.35 });
+        featureVideos.forEach(function (video) { featureVideoObserver.observe(video); });
+    }
     
 })(jQuery);
 

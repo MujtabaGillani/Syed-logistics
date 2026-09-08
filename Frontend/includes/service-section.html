@@ -4,88 +4,104 @@
     <div class="container py-5">
         <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
             <h6 class="text-secondary text-uppercase">Our Services</h6>
-            <h1 class="mb-5">Explore Our Services</h1>
+            <h1 class="mb-5">Freight expertise for every move</h1>
         </div>
         <div class="row g-4">
             <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
                 <div class="service-item p-4">
                     <div class="overflow-hidden mb-4">
-                        <img class="img-fluid" src="{% static 'img/service-1.jpg' %}" alt="">
+                        <video class="service-preview" muted loop playsinline preload="metadata" poster="{% static 'img/service-1.jpg' %}" aria-label="Air freight in motion">
+                            <source src="{% static 'video/air-freight.mp4' %}" type="video/mp4">
+                        </video>
                     </div>
                     <h4 class="mb-3">Air Freight</h4>
-                    <p>Fast and reliable air freight services for time-sensitive shipments. We offer express and standard air freight options with real-time tracking and customs clearance.</p>
+                    <p>For time-critical cargo, we coordinate express and standard air freight with clear updates from booking to arrival.</p>
                     <a class="btn-slide mt-2" href="{% url 'air_freight' %}"><i class="fa fa-arrow-right"></i><span>Read More</span></a>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
                 <div class="service-item p-4">
                     <div class="overflow-hidden mb-4">
-                        <img class="img-fluid" src="{% static 'img/service-2.jpg' %}" alt="">
+                        <video class="service-preview" muted loop playsinline preload="metadata" poster="{% static 'img/service-2.jpg' %}" aria-label="Ocean freight in motion">
+                            <source src="{% static 'video/ocean.mp4' %}" type="video/mp4">
+                        </video>
                     </div>
                     <h4 class="mb-3">Ocean Freight</h4>
-                    <p>Cost-effective ocean freight solutions for large shipments. We provide FCL and LCL services with comprehensive cargo insurance and port-to-port delivery.</p>
+                    <p>Flexible FCL and LCL options for planned shipments, supported by practical documentation and port-to-door coordination.</p>
                     <a class="btn-slide mt-2" href="{% url 'ocean_freight' %}"><i class="fa fa-arrow-right"></i><span>Read More</span></a>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.7s">
                 <div class="service-item p-4">
                     <div class="overflow-hidden mb-4">
-                        <img class="img-fluid" src="{% static 'img/service-3.jpg' %}" alt="">
+                        <video class="service-preview" muted loop playsinline preload="metadata" poster="{% static 'img/service-3.jpg' %}" aria-label="Road freight in motion">
+                            <source src="{% static 'video/truck.mp4' %}" type="video/mp4">
+                        </video>
                     </div>
                     <h4 class="mb-3">Road Freight</h4>
-                    <p>Reliable road transportation services across continents. Our fleet of modern trucks ensures safe and timely delivery with GPS tracking and temperature-controlled options.</p>
+                    <p>Dependable road transport for domestic and cross-border cargo, with scheduling and shipment visibility that keep teams aligned.</p>
                     <a class="btn-slide mt-2" href="{% url 'road_freight' %}"><i class="fa fa-arrow-right"></i><span>Read More</span></a>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.9s">
                 <div class="service-item p-4">
                     <div class="overflow-hidden mb-4">
-                        <img class="img-fluid" src="{% static 'img/service-4.jpg' %}" alt="">
+                        <video class="service-preview" muted loop playsinline preload="metadata" poster="{% static 'img/service-4.jpg' %}" aria-label="Train freight in motion">
+                            <source src="{% static 'video/train.mp4' %}" type="video/mp4">
+                        </video>
                     </div>
                     <h4 class="mb-3">Train Freight</h4>
-                    <p>Efficient rail freight services for bulk cargo and intermodal transportation. We offer scheduled rail services with container and bulk cargo handling capabilities.</p>
+                    <p>A cost-conscious option for bulk and intermodal cargo, planned around dependable rail schedules and handling requirements.</p>
                     <a class="btn-slide mt-2" href="{% url 'train_freight' %}"><i class="fa fa-arrow-right"></i><span>Read More</span></a>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
                 <div class="service-item p-4">
                     <div class="overflow-hidden mb-4">
-                        <img class="img-fluid" src="{% static 'img/service-5.jpg' %}" alt="">
+                        <video class="service-preview" muted loop playsinline preload="metadata" poster="{% static 'img/service-5.jpg' %}" aria-label="Customs clearance in motion">
+                            <source src="{% static 'video/custom.mp4' %}" type="video/mp4">
+                        </video>
                     </div>
                     <h4 class="mb-3">Customs Clearance</h4>
-                    <p>Expert customs clearance services ensuring smooth import/export processes. Our experienced team handles all documentation and regulatory compliance requirements.</p>
+                    <p>Clear, careful support with import and export documentation to help cargo move through customs with fewer delays.</p>
                     <a class="btn-slide mt-2" href="{% url 'custom_clearance' %}"><i class="fa fa-arrow-right"></i><span>Read More</span></a>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
                 <div class="service-item p-4">
                     <div class="overflow-hidden mb-4">
-                        <img class="img-fluid" src="{% static 'img/service-6.jpg' %}" alt="">
+                        <video class="service-preview" muted loop playsinline preload="metadata" poster="{% static 'img/service-6.jpg' %}" aria-label="Warehouse operations in motion">
+                            <source src="{% static 'video/ware-hpuse.mp4' %}" type="video/mp4">
+                        </video>
                     </div>
                     <h4 class="mb-3">Warehouse Solutions</h4>
-                    <p>Comprehensive warehousing and distribution services with secure storage facilities, inventory management, and order fulfillment capabilities worldwide.</p>
+                    <p>Storage, inventory handling, and fulfilment support designed to keep stock organised and ready for the next move.</p>
                     <a class="btn-slide mt-2" href="{% url 'warehouse' %}"><i class="fa fa-arrow-right"></i><span>Read More</span></a>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
                 <div class="service-item p-4">
                     <div class="overflow-hidden mb-4">
-                        <img class="img-fluid" src="{% static 'img/service-1.jpg' %}" alt="">
+                        <video class="service-preview" muted loop playsinline preload="metadata" poster="{% static 'img/service-1.jpg' %}" aria-label="Supply chain in motion">
+                            <source src="{% static 'video/supply-chain.mp4' %}" type="video/mp4">
+                        </video>
                     </div>
                     <h4 class="mb-3">Supply Chain</h4>
 
-                    <p>End-to-end supply chain management solutions optimizing your logistics operations from procurement to final delivery with real-time visibility.</p>
+                    <p>Connected planning from procurement to final delivery, giving your team a clearer view of the work in between.</p>
                     <a class="btn-slide mt-2" href="{% url 'supply_chain' %}"><i class="fa fa-arrow-right"></i><span>Read More</span></a>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="0.7s">
                 <div class="service-item p-4">
                     <div class="overflow-hidden mb-4">
-                        <img class="img-fluid" src="{% static 'img/service-2.jpg' %}" alt="">
+                        <video class="service-preview" muted loop playsinline preload="metadata" poster="{% static 'img/service-2.jpg' %}" aria-label="Logistics solutions in motion">
+                            <source src="{% static 'video/LS.mp4' %}" type="video/mp4">
+                        </video>
                     </div>
 
                     <h4 class="mb-3">Logistics Solutions</h4>
-                    <p>Customized logistics solutions tailored to your specific business needs. We provide integrated services combining multiple transportation modes for optimal efficiency.</p>
+                    <p>One coordinated plan for freight, clearance, storage, and delivery—built around your cargo, route, and timeline.</p>
                     <a class="btn-slide mt-2" href="{% url 'logistics_solutions' %}"><i class="fa fa-arrow-right"></i><span>Read More</span></a>
                 </div>
             </div>
