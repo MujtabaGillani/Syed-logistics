@@ -37,6 +37,7 @@ jobs:
             git checkout --force main
             git reset --hard origin/main
             git lfs install --local
+            git config --local lfs.url "https://github.com/MujtabaGillani/Syed-logistics.git/info/lfs"
             if [ -z "${LFS_DEPLOY_TOKEN:-}" ]; then
               echo "LFS_DEPLOY_TOKEN is not configured."
               exit 1
