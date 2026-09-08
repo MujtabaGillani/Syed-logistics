@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
-      LFS_DEPLOY_TOKEN: ${{ secrets.LFS_DEPLOY_TOKEN }}
+      LFS_DEPLOY_TOKEN: ${{ github.token }}
 
     steps:
       - name: Deploy over SSH
