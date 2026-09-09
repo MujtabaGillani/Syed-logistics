@@ -106,7 +106,7 @@
                         <div class="col-md-4">
                             <label class="form-label">Shipment</label>
                             <div class="input-group">
-                                <select class="form-select" id="oShipment"><option value="">— No shipment —</option></select>
+                                <select class="form-select" id="oShipment"><option value="">- No shipment -</option></select>
                                 <button type="button" class="btn btn-outline-primary" id="btnNewShipment" title="Quick-add shipment"><i class="fa fa-plus"></i></button>
                             </div>
                             <div class="form-text">Pick a shipment to limit customers to its members.</div>
@@ -147,7 +147,7 @@
                                 </tr>
                             </thead>
                             <tbody id="lineRows">
-                                <tr><td colspan="5" class="fin-empty">No items yet — search above to add.</td></tr>
+                                <tr><td colspan="5" class="fin-empty">No items yet - search above to add.</td></tr>
                             </tbody>
                             <tfoot>
                                 <tr>
@@ -403,7 +403,7 @@
                 // Freshly created / empty shipment: allow any customer, and
                 // they'll be attached to the shipment on save.
                 setCustomerOptions(customersCache);
-                F.toast('This shipment has no customers yet — the one you pick will be added to it.', 'warning');
+                F.toast('This shipment has no customers yet - the one you pick will be added to it.', 'warning');
             }
         });
     });
@@ -444,7 +444,7 @@
                     + '<td><strong>' + F.escapeHtml(o.invoice_number) + '</strong></td>'
                     + '<td>' + F.date(o.order_date) + '</td>'
                     + '<td>' + F.escapeHtml(o.customer_name) + '</td>'
-                    + '<td>' + F.escapeHtml(o.shipment_number || '—') + '</td>'
+                    + '<td>' + F.escapeHtml(o.shipment_number || '-') + '</td>'
                     + '<td class="num">' + F.money(o.total_amount) + '</td>'
                     + '<td class="num">' + F.money(o.amount_received) + '</td>'
                     + '<td class="num">' + F.money(o.outstanding) + '</td>'
@@ -461,12 +461,12 @@
     function renderLines() {
         var body = document.getElementById('lineRows');
         if (!lines.length) {
-            body.innerHTML = '<tr><td colspan="5" class="fin-empty">No items yet — search above to add.</td></tr>';
+            body.innerHTML = '<tr><td colspan="5" class="fin-empty">No items yet - search above to add.</td></tr>';
         } else {
             body.innerHTML = lines.map(function (ln, i) {
                 return '<tr>'
                     + '<td>' + F.escapeHtml(ln.name) + '</td>'
-                    + '<td>' + F.escapeHtml(ln.sku || '—') + '</td>'
+                    + '<td>' + F.escapeHtml(ln.sku || '-') + '</td>'
                     + '<td class="num"><input type="number" step="0.001" min="0" class="form-control form-control-sm line-wt" data-i="' + i + '" data-f="weight_kg" value="' + ln.weight_kg + '"></td>'
                     + '<td class="num"><input type="number" step="0.01" min="0" class="form-control form-control-sm line-amt" data-i="' + i + '" data-f="amount" value="' + ln.amount + '"></td>'
                     + '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-rm="' + i + '"><i class="fa fa-times"></i></button></td>'
@@ -657,7 +657,7 @@
     // ---------- shipments dropdown ----------
     function loadShipments() {
         return F.get('shipments/options_list/').then(function (list) {
-            var opts = '<option value="">— No shipment —</option>';
+            var opts = '<option value="">- No shipment -</option>';
             (list || []).forEach(function (s) {
                 opts += '<option value="' + s.id + '">' + F.escapeHtml(s.shipment_id) + '</option>';
             });
@@ -766,7 +766,7 @@
                 + kpi('Outstanding', F.money(o.outstanding), 'is-outstanding')
                 + kpi('Status', o.is_settled ? 'Settled' : 'Open', 'is-profit');
             document.getElementById('vItems').innerHTML = (o.items || []).map(function (it) {
-                return '<tr><td>' + F.escapeHtml(it.name) + '</td><td>' + F.escapeHtml(it.sku || '—')
+                return '<tr><td>' + F.escapeHtml(it.name) + '</td><td>' + F.escapeHtml(it.sku || '-')
                     + '</td><td class="num">' + Number(it.weight_kg).toLocaleString()
                     + '</td><td class="num">' + F.money(it.amount) + '</td></tr>';
             }).join('') || '<tr><td colspan="4" class="fin-empty">No items.</td></tr>';

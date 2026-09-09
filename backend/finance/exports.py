@@ -205,7 +205,7 @@ def voucher_invoice_excel(v):
         ws.cell(row=r, column=1, value=label).font = Font(bold=True)
         ws.cell(row=r, column=2, value=value)
 
-    ws.cell(row=1, column=1, value='Syed Logistic — Invoice').font = Font(bold=True, size=14)
+    ws.cell(row=1, column=1, value='Syed Logistic - Invoice').font = Font(bold=True, size=14)
     head(3, 'Invoice #', v.invoice_number)
     head(4, 'Invoice Date', v.invoice_date.isoformat() if v.invoice_date else '')
     head(5, 'Due Date', v.due_date.isoformat() if v.due_date else '')
@@ -274,7 +274,7 @@ def voucher_invoice_pdf(v):
         ['Invoice #', v.invoice_number,
          'Date', v.invoice_date.isoformat() if v.invoice_date else ''],
         ['Status', 'Settled' if v.is_paid else 'Due',
-         'Due Date', v.due_date.isoformat() if v.due_date else '—'],
+         'Due Date', v.due_date.isoformat() if v.due_date else '-'],
         ['Payment Type', v.get_payment_type_display(), '', ''],
     ]
     mt = Table(meta, colWidths=[28 * mm, 60 * mm, 24 * mm, 50 * mm])
@@ -320,7 +320,7 @@ def voucher_invoice_pdf(v):
         pdata = [['Date', 'Method', 'Reference', 'Amount']]
         for p in v.payments.all():
             pdata.append([p.date.isoformat(), p.get_method_display(),
-                          _pdf_safe(p.reference) or '—', _money(p.amount)])
+                          _pdf_safe(p.reference) or '-', _money(p.amount)])
         pt = Table(pdata, colWidths=[30 * mm, 35 * mm, 65 * mm, 40 * mm])
         pt.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#54627a')),

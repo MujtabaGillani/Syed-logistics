@@ -153,7 +153,7 @@
                     <div class="table-responsive">
                         <table class="fin-table" id="lineTable">
                             <thead><tr><th>Item</th><th>SKU</th><th class="num">Weight (kg)</th><th class="num">Qty</th><th></th></tr></thead>
-                            <tbody id="lineRows"><tr><td colspan="5" class="fin-empty">No items yet — search above to add.</td></tr></tbody>
+                            <tbody id="lineRows"><tr><td colspan="5" class="fin-empty">No items yet - search above to add.</td></tr></tbody>
                         </table>
                     </div>
 
@@ -274,7 +274,7 @@
     var customersCache = [];
     var selectedCustomers = [];   // [{id, name}]
     var lines = [];               // [{item, sku, name, weight_kg, quantity}]
-    var pendingImages = [];       // [{file, url}] — selected but not yet uploaded
+    var pendingImages = [];       // [{file, url}] - selected but not yet uploaded
     var editingId = null;
     var filters = { from: '', to: '', status: '', search: '' };
     function today() { return new Date().toISOString().slice(0, 10); }
@@ -337,11 +337,11 @@
     function renderLines() {
         var body = document.getElementById('lineRows');
         if (!lines.length) {
-            body.innerHTML = '<tr><td colspan="5" class="fin-empty">No items yet — search above to add.</td></tr>';
+            body.innerHTML = '<tr><td colspan="5" class="fin-empty">No items yet - search above to add.</td></tr>';
             return;
         }
         body.innerHTML = lines.map(function (ln, i) {
-            return '<tr><td>' + F.escapeHtml(ln.name) + '</td><td>' + F.escapeHtml(ln.sku || '—') + '</td>'
+            return '<tr><td>' + F.escapeHtml(ln.name) + '</td><td>' + F.escapeHtml(ln.sku || '-') + '</td>'
                 + '<td class="num"><input type="number" step="0.001" min="0" class="form-control form-control-sm" style="max-width:120px" data-i="' + i + '" data-f="weight_kg" value="' + ln.weight_kg + '"></td>'
                 + '<td class="num"><input type="number" step="1" min="1" class="form-control form-control-sm" style="max-width:90px" data-i="' + i + '" data-f="quantity" value="' + ln.quantity + '"></td>'
                 + '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-rm="' + i + '"><i class="fa fa-times"></i></button></td></tr>';
@@ -575,10 +575,10 @@
         F.get('shipments/' + id + '/').then(function (s) {
             document.getElementById('vTitle').textContent = s.shipment_id;
             document.getElementById('vSub').textContent = F.date(s.shipment_date) + ' • ' + s.status_display + ' • ' + Number(s.total_weight) + ' kg';
-            document.getElementById('vCustomers').textContent = (s.customers_detail || []).map(function (c) { return c.name; }).join(', ') || '—';
-            document.getElementById('vNotes').textContent = s.notes || '—';
+            document.getElementById('vCustomers').textContent = (s.customers_detail || []).map(function (c) { return c.name; }).join(', ') || '-';
+            document.getElementById('vNotes').textContent = s.notes || '-';
             document.getElementById('vItems').innerHTML = (s.items || []).map(function (it) {
-                return '<tr><td>' + F.escapeHtml(it.name) + '</td><td>' + F.escapeHtml(it.sku || '—') + '</td><td class="num">' + Number(it.weight_kg) + '</td><td class="num">' + it.quantity + '</td></tr>';
+                return '<tr><td>' + F.escapeHtml(it.name) + '</td><td>' + F.escapeHtml(it.sku || '-') + '</td><td class="num">' + Number(it.weight_kg) + '</td><td class="num">' + it.quantity + '</td></tr>';
             }).join('') || '<tr><td colspan="4" class="fin-empty">No items.</td></tr>';
             document.getElementById('vImages').innerHTML = (s.images || []).length
                 ? s.images.map(function (im) { return '<span class="ship-thumb-wrap"><a href="' + F.escapeHtml(im.image) + '" target="_blank"><img src="' + F.escapeHtml(im.image) + '" class="ship-thumb"></a></span>'; }).join('')
@@ -593,7 +593,7 @@
             data = data || [];
             if (!data.length) { rows.innerHTML = '<tr><td colspan="8" class="fin-empty">No shipments found.</td></tr>'; return; }
             rows.innerHTML = data.map(function (s) {
-                var custs = (s.customers_detail || []).map(function (c) { return F.escapeHtml(c.name); }).join(', ') || '—';
+                var custs = (s.customers_detail || []).map(function (c) { return F.escapeHtml(c.name); }).join(', ') || '-';
                 return '<tr>'
                     + '<td><strong>' + F.escapeHtml(s.shipment_id) + '</strong></td>'
                     + '<td>' + F.date(s.shipment_date) + '</td>'

@@ -2,12 +2,12 @@
 
 Money basis used across the dashboard
 --------------------------------------
-* **Revenue (accrual)** — sum of signed voucher amounts in the period
+* **Revenue (accrual)** - sum of signed voucher amounts in the period
   (debit/adjustment vouchers count as negative). This is what "we billed".
-* **Received** — sum of payments recorded in the period (cash actually in).
-* **Outstanding (Due)** — for the invoices in the period: signed amount minus
+* **Received** - sum of payments recorded in the period (cash actually in).
+* **Outstanding (Due)** - for the invoices in the period: signed amount minus
   the payments knocked off against them (what customers still owe).
-* **Expenses** — sum of office expense amounts in the period.
+* **Expenses** - sum of office expense amounts in the period.
 * **Net Profit / Loss = Revenue (accrual) − Expenses.**
 
 Over the full (unfiltered) history these reconcile exactly:
@@ -127,7 +127,7 @@ class CustomerViewSet(AuthenticatedModelViewSet):
     @action(detail=True, methods=['get'])
     def ledger(self, request, pk=None):
         """Customer statement: invoices as debits, payments as credits, with a
-        running balance. Purely derived from immutable records — read only."""
+        running balance. Purely derived from immutable records - read only."""
         customer = self.get_object()
         return Response(build_customer_ledger(customer))
 
@@ -161,7 +161,7 @@ class CustomerViewSet(AuthenticatedModelViewSet):
 
 
 class GeneralVoucherViewSet(AuthenticatedModelViewSet):
-    """Sales vouchers — create / read / update only.
+    """Sales vouchers - create / read / update only.
 
     Vouchers are an audit trail, so DELETE is intentionally disabled.
     Supports filtering: ?from=YYYY-MM-DD&to=YYYY-MM-DD&status=due|settled|all
@@ -363,7 +363,7 @@ class SaleOrderViewSet(AuthenticatedModelViewSet):
 
     @action(detail=False, methods=['get'])
     def open(self, request):
-        """Sale orders with an outstanding balance — for the voucher receipt
+        """Sale orders with an outstanding balance - for the voucher receipt
         dropdown. Optional ?customer=<id>."""
         qs = self.get_queryset()
         if isinstance(qs, list):
@@ -508,14 +508,14 @@ def build_customer_ledger(customer):
     customer owes us."""
     lines = []
 
-    # Sale orders — debit (customer owes the order total).
+    # Sale orders - debit (customer owes the order total).
     for so in customer.sale_orders.all():
         lines.append({
             'date': so.order_date,
             'kind': 'invoice',
             'reference': so.invoice_number,
             'description': 'Sale Order'
-                           + (f' — shipment {so.shipment_number}'
+                           + (f' - shipment {so.shipment_number}'
                               if so.shipment_number else ''),
             'debit': so.total_amount,
             'credit': None,
@@ -545,7 +545,7 @@ def build_customer_ledger(customer):
                 'credit': -v.signed_amount if v.signed_amount < 0 else None,
             })
 
-    # Payments knocked off standalone vouchers — credit.
+    # Payments knocked off standalone vouchers - credit.
     for p in Payment.objects.filter(voucher__customer=customer)\
             .select_related('voucher'):
         lines.append({
@@ -553,7 +553,7 @@ def build_customer_ledger(customer):
             'kind': 'payment',
             'reference': p.voucher.invoice_number,
             'description': f'Payment received ({p.get_method_display()})'
-                           + (f' — {p.reference}' if p.reference else ''),
+                           + (f' - {p.reference}' if p.reference else ''),
             'debit': None,
             'credit': p.amount,
         })
@@ -702,7 +702,7 @@ class DashboardSummaryView(APIView):
         def bucketize(qs, field, expr):
             """Group a queryset into a {bucket_date: total} dict.
 
-            Day granularity groups by the (already-date) field directly —
+            Day granularity groups by the (already-date) field directly -
             TruncDate is avoided because SQLite treats it as a datetime cast
             and raises on plain DateFields. ``order_by()`` clears the model's
             default ordering so it can't leak into the GROUP BY."""
@@ -730,7 +730,7 @@ class DashboardSummaryView(APIView):
             rev_by[k] = (rev_by.get(k, 0) or 0) + v
         exp_by = bucketize(expenses, 'date', 'amount')
         # Received = payments (by payment date) + receipt vouchers (by invoice
-        # date) — cash actually collected.
+        # date) - cash actually collected.
         recv_by = bucketize(payments, 'date', 'amount')
         for k, v in bucketize(receipts, 'invoice_date', 'amount').items():
             recv_by[k] = (recv_by.get(k, 0) or 0) + v

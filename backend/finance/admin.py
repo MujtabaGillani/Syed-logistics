@@ -35,7 +35,7 @@ class GeneralVoucherAdmin(admin.ModelAdmin):
     list_per_page = 25
 
     def has_delete_permission(self, request, obj=None):
-        # Vouchers are an audit trail — block deletion in the admin too.
+        # Vouchers are an audit trail - block deletion in the admin too.
         return False
 
 
@@ -49,7 +49,7 @@ class PaymentAdmin(admin.ModelAdmin):
     list_per_page = 25
 
     def has_delete_permission(self, request, obj=None):
-        # Payments are append-only ledger entries — never delete.
+        # Payments are append-only ledger entries - never delete.
         return False
 
     def has_change_permission(self, request, obj=None):
@@ -90,7 +90,7 @@ class SaleOrderAdmin(admin.ModelAdmin):
     list_per_page = 25
 
     def has_delete_permission(self, request, obj=None):
-        # Sale orders are ledger debits — preserve the audit trail.
+        # Sale orders are ledger debits - preserve the audit trail.
         return False
 
 

@@ -104,7 +104,7 @@
                     <div class="mb-3" id="saleOrderWrap">
                         <label class="form-label">Knock off a Sale Order (optional)</label>
                         <select class="form-select" id="vSaleOrder">
-                            <option value="">— None: standalone voucher (invoice) —</option>
+                            <option value="">- None: standalone voucher (invoice) -</option>
                         </select>
                         <div class="form-text" id="vSaleOrderInfo">Pick an open sale order to record this voucher as a receipt that reduces its balance.</div>
                     </div>
@@ -232,7 +232,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Payments — <span id="plInvoiceNo"></span></h5>
+                <h5 class="modal-title">Payments - <span id="plInvoiceNo"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -318,11 +318,11 @@
     function loadOpenOrders() {
         return F.get('sale-orders/open/').then(function (orders) {
             openOrdersCache = {};
-            var opts = '<option value="">— None: standalone voucher (invoice) —</option>';
+            var opts = '<option value="">- None: standalone voucher (invoice) -</option>';
             (orders || []).forEach(function (o) {
                 openOrdersCache[o.id] = o;
                 opts += '<option value="' + o.id + '">' + F.escapeHtml(o.invoice_number)
-                    + ' — ' + F.escapeHtml(o.customer_name)
+                    + ' - ' + F.escapeHtml(o.customer_name)
                     + ' (bal ' + F.money(o.outstanding) + ')</option>';
             });
             document.getElementById('vSaleOrder').innerHTML = opts;
@@ -340,12 +340,12 @@
             custSel.disabled = true;
             document.getElementById('vAmount').value = o.outstanding;
             document.getElementById('vAmount').max = o.outstanding;
-            // A receipt is money in — the "debit" type doesn't apply.
+            // A receipt is money in - the "debit" type doesn't apply.
             ptype.querySelector('option[value="debit"]').disabled = true;
             if (ptype.value === 'debit') { ptype.value = 'cash'; }
             document.getElementById('initialPayWrap').classList.add('d-none');
             info.innerHTML = '<span class="text-success">Receipt against ' + F.escapeHtml(o.invoice_number)
-                + '</span> — outstanding ' + F.money(o.outstanding) + '. Amount is capped to this balance.';
+                + '</span> - outstanding ' + F.money(o.outstanding) + '. Amount is capped to this balance.';
         } else {
             custSel.disabled = false;
             document.getElementById('vAmount').max = '';
@@ -483,7 +483,7 @@
 
     document.getElementById('btnAddVoucher').addEventListener('click', function () {
         if (!customersCache.length) {
-            F.toast('Add a customer first — vouchers must belong to a customer.', 'warning');
+            F.toast('Add a customer first - vouchers must belong to a customer.', 'warning');
             return;
         }
         openModal(null);
@@ -605,7 +605,7 @@
             body.innerHTML = data.map(function (p) {
                 return '<tr><td>' + F.date(p.date) + '</td>'
                     + '<td>' + F.escapeHtml(p.method_display) + '</td>'
-                    + '<td>' + F.escapeHtml(p.reference || '—') + '</td>'
+                    + '<td>' + F.escapeHtml(p.reference || '-') + '</td>'
                     + '<td class="num">' + F.money(p.amount) + '</td></tr>';
             }).join('');
         });

@@ -6,7 +6,7 @@ Every importer returns a summary dict:
 
     {"created": int, "updated": int, "skipped": int, "errors": [{"row", "error"}]}
 
-Imports are transactional per row — a bad row is reported and skipped without
+Imports are transactional per row - a bad row is reported and skipped without
 aborting the whole file.
 """
 from datetime import datetime, date, time
@@ -165,14 +165,14 @@ def import_vouchers(file_obj):
         try:
             invoice_no = _get(rec, 'invoice #', 'invoice', 'invoice number',
                               'invoice_number')
-            # Invoice number is optional — auto-generated when omitted.
+            # Invoice number is optional - auto-generated when omitted.
             invoice_no = str(invoice_no).strip() if invoice_no else ''
             if invoice_no and GeneralVoucher.objects.filter(
                     invoice_number=invoice_no).exists():
                 result['skipped'] += 1
                 result['errors'].append(
                     {'row': rownum,
-                     'error': f'invoice {invoice_no} already exists — skipped'})
+                     'error': f'invoice {invoice_no} already exists - skipped'})
                 continue
             customer = _find_customer(rec)
             if not customer:

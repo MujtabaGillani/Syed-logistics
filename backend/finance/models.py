@@ -2,7 +2,7 @@
 
 Money is stored as ``DecimalField`` (never float) so that the figures the
 finance/QA team reconcile are exact to the paisa. Vouchers are intentionally
-*append/edit only* — there is no model-level delete path exposed through the
+*append/edit only* - there is no model-level delete path exposed through the
 API, which keeps an auditable trail of every invoice raised.
 """
 import random
@@ -13,7 +13,7 @@ from django.db import models
 
 
 def generate_invoice_number():
-    """Random invoice number in the form ``AYUI-78402410`` — four uppercase
+    """Random invoice number in the form ``AYUI-78402410`` - four uppercase
     letters, a hyphen, then eight digits."""
     letters = ''.join(random.choices(string.ascii_uppercase, k=4))
     digits = ''.join(random.choices(string.digits, k=8))
@@ -114,7 +114,7 @@ class GeneralVoucher(models.Model):
         ordering = ['-invoice_date', '-created_at']
 
     def __str__(self):
-        return f'{self.invoice_number} — {self.customer}'
+        return f'{self.invoice_number} - {self.customer}'
 
     def save(self, *args, **kwargs):
         # Auto-assign a unique invoice number on first save if none was given.
@@ -167,7 +167,7 @@ class GeneralVoucher(models.Model):
         """Remaining receivable on this voucher = signed amount − payments.
 
         A debit/adjustment voucher carries a negative signed amount, so its
-        outstanding is negative — it *reduces* the customer's balance (a credit
+        outstanding is negative - it *reduces* the customer's balance (a credit
         note). A receipt voucher is money received against a sale order, not a
         receivable, so it contributes nothing."""
         if self.is_receipt:
@@ -190,7 +190,7 @@ class GeneralVoucher(models.Model):
 
 class Payment(models.Model):
     """An immutable receipt recorded against a voucher to knock off its
-    balance. Payments are append-only — they can be created and read but
+    balance. Payments are append-only - they can be created and read but
     never edited or deleted, preserving the ledger's integrity."""
 
     METHOD_CASH = 'cash'
@@ -284,7 +284,7 @@ class Item(models.Model):
         ordering = ['name']
 
     def __str__(self):
-        return f'{self.sku} — {self.name}'
+        return f'{self.sku} - {self.name}'
 
 
 class SaleOrder(models.Model):
@@ -316,7 +316,7 @@ class SaleOrder(models.Model):
         ordering = ['-order_date', '-created_at']
 
     def __str__(self):
-        return f'{self.invoice_number} — {self.customer}'
+        return f'{self.invoice_number} - {self.customer}'
 
     def save(self, *args, **kwargs):
         if not self.invoice_number:
@@ -398,7 +398,7 @@ class Employee(models.Model):
         ordering = ['name']
 
     def __str__(self):
-        return f'{self.name} — {self.designation}'
+        return f'{self.name} - {self.designation}'
 
 
 class Shipment(models.Model):

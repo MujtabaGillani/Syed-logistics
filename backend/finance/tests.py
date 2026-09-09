@@ -134,7 +134,7 @@ class FinanceApiTests(AuthenticatedAPITestCase):
         self.assertEqual(len(nums), 15)
 
     def test_client_invoice_number_is_ignored(self):
-        # A client cannot dictate the invoice number — it is server-assigned.
+        # A client cannot dictate the invoice number - it is server-assigned.
         r = self.client.post('/api/finance/vouchers/', {
             'invoice_number': 'HACK-00000001', 'invoice_date': '2026-06-01',
             'customer': self.customer.id, 'payment_type': 'cash',
@@ -209,7 +209,7 @@ class FinanceApiTests(AuthenticatedAPITestCase):
                            payment_type='credit', amount=Decimal('600.00'))
         self._voucher(invoice_number='V-3', invoice_date='2026-06-10',
                       payment_type='debit', amount=Decimal('400.00'))
-        # Pay 700 against V-2's 600? no — pay 500 against V-2.
+        # Pay 700 against V-2's 600? no - pay 500 against V-2.
         Payment.objects.create(voucher=v2, amount=Decimal('500.00'),
                                date='2026-06-12')
         v2.recompute_paid()
@@ -237,7 +237,7 @@ class FinanceApiTests(AuthenticatedAPITestCase):
         self.assertFalse(t['is_profit'])
 
     def test_debit_voucher_reduces_outstanding(self):
-        # A debit note's outstanding is negative — it reduces the receivable
+        # A debit note's outstanding is negative - it reduces the receivable
         # so that Total billed − Received = Outstanding stays exact.
         v = GeneralVoucher.objects.create(
             invoice_number='ADJ-1', invoice_date='2026-06-01',

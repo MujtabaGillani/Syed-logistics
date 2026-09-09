@@ -187,7 +187,7 @@ class ItemSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def get_label(self, obj):
-        return f'{obj.sku} — {obj.name}'
+        return f'{obj.sku} - {obj.name}'
 
     def validate_amount(self, value):
         if value is None or value < 0:

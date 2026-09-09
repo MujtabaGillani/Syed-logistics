@@ -73,7 +73,7 @@
     }
 
     function date(value) {
-        if (!value) { return '—'; }
+        if (!value) { return '-'; }
         var d = new Date(value);
         if (isNaN(d.getTime())) { return value; }
         return d.toLocaleDateString('en-GB', {
