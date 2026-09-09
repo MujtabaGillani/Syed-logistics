@@ -452,6 +452,16 @@ a:hover { color: var(--primary-hover); }
 }
 
 .home-intro__copy { max-width: 535px; }
+.service-locations { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.25rem 0 1.5rem; }
+.service-locations span { padding: .4rem .7rem; color: var(--primary); background: #fff; border: 1px solid #DCE3E8; font-size: .72rem; font-weight: 700; letter-spacing: .025em; }
+.service-locations span:first-child { border-color: rgba(var(--secondary-rgb), .65); background: rgba(var(--secondary-rgb), .14); }
+.service-locations i { margin-right: .4rem; color: var(--secondary-hover); }
+
+.contact-coverage { position: relative; z-index: 1; display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); }
+.contact-coverage > i { color: var(--secondary); font-size: 1.6rem; }
+.contact-coverage h5 { margin-bottom: .2rem; }
+.footer-locations { display: flex; gap: .7rem; margin-bottom: .65rem; color: rgba(255,255,255,.72); }
+.footer-locations i { margin-top: .25rem; color: var(--secondary); font-size: .8rem; }
 .home-intro__copy h6 { font-size: .75rem; font-weight: 700; letter-spacing: .12em; }
 .home-intro__copy h1 { max-width: 510px; margin-bottom: 1.25rem; font-size: clamp(2rem, 3.5vw, 3.2rem); line-height: 1.08; }
 .home-intro__copy p { max-width: 500px; margin-bottom: 2rem; color: #526274; font-size: 1.05rem; line-height: 1.75; }

@@ -9,11 +9,11 @@
     <video class="video-hero__media is-active" autoplay muted loop playsinline preload="auto" poster="{% static 'img/carousel-1.jpg' %}">
         <source src="{% static 'video/logistics-hero.mp4' %}" type="video/mp4">
     </video>
-    <video class="video-hero__media" muted loop playsinline preload="metadata" poster="{% static 'img/carousel-2.jpg' %}">
-        <source src="{% static 'video/air-freight.mp4' %}" type="video/mp4">
+    <video class="video-hero__media" muted loop playsinline preload="none" poster="{% static 'img/carousel-2.jpg' %}">
+        <source data-src="{% static 'video/air-freight.mp4' %}" type="video/mp4">
     </video>
-    <video class="video-hero__media" muted loop playsinline preload="metadata" poster="{% static 'img/carousel-1.jpg' %}">
-        <source src="{% static 'video/warehouse.mp4' %}" type="video/mp4">
+    <video class="video-hero__media" muted loop playsinline preload="none" poster="{% static 'img/carousel-1.jpg' %}">
+        <source data-src="{% static 'video/warehouse.mp4' %}" type="video/mp4">
     </video>
     <div class="video-hero__overlay"></div>
     <div class="video-hero__grid" aria-hidden="true"></div>
@@ -58,8 +58,12 @@
                         <h6 class="text-secondary text-uppercase mb-3">About Syed Logistic</h6>
                         <h1>One team. Every stage of the journey.</h1>
                         <p>Syed Logistic brings air, ocean, road, customs, and warehousing together under one responsive team—so you have more clarity from collection to delivery.</p>
+                        <div class="service-locations" aria-label="Locations we serve">
+                            <span><i class="fa fa-map-marker-alt"></i>Lahore</span>
+                            <span>Islamabad</span><span>Karachi</span><span>Sialkot</span><span>Faisalabad</span><span>China</span>
+                        </div>
                         <a class="home-intro__contact" href="tel:+923298756059">
-                            <span><i class="fa fa-headphones"></i></span>
+                            <span><i class="fab fa-whatsapp"></i></span>
                             <small>Need to move something?</small>
                             <strong>+92 329 8756 059 <i class="fa fa-arrow-right"></i></strong>
                         </a>
@@ -100,9 +104,6 @@
 <!-- Quote End -->
 
 
-{% include 'includes/team-section.html' %}
-
-
 <!-- Testimonial Start -->
 {% include 'includes/testimonial-section.html' %}
 <!-- Testimonial End -->
@@ -117,11 +118,34 @@
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
         let activeIndex = 0;
         let rotation;
+        let preloadTimer;
+        let userPaused = false;
+        let heroVisible = true;
+
+        function ensureLoaded(video) {
+            const source = video.querySelector('source[data-src]');
+            if (source) {
+                source.src = source.dataset.src;
+                source.removeAttribute('data-src');
+                video.load();
+            }
+            if (video.readyState >= 2) return Promise.resolve();
+            return new Promise(function (resolve) {
+                video.addEventListener('loadeddata', resolve, { once: true });
+                video.addEventListener('error', resolve, { once: true });
+            });
+        }
+
+        function canPlay() {
+            return !userPaused && heroVisible && !document.hidden && !reduceMotion.matches;
+        }
 
         function setMotion(isPaused) {
-            if (isPaused) {
+            userPaused = isPaused;
+            if (!canPlay()) {
                 videos.forEach(function (video) { video.pause(); });
-                clearInterval(rotation);
+                clearTimeout(rotation);
+                clearTimeout(preloadTimer);
             } else {
                 videos[activeIndex].play().catch(function () {});
                 startRotation();
@@ -132,7 +156,10 @@
             control.querySelector('span').textContent = isPaused ? 'Play motion' : 'Pause motion';
         }
 
-        function showVideo(index) {
+        async function showVideo(index) {
+            if (index === activeIndex) return;
+            await ensureLoaded(videos[index]);
+            if (!canPlay()) return;
             videos[activeIndex].classList.remove('is-active');
             videos[activeIndex].pause();
             activeIndex = index;
@@ -141,23 +168,58 @@
                 dot.classList.toggle('is-active', dotIndex === activeIndex);
                 dot.setAttribute('aria-current', dotIndex === activeIndex ? 'true' : 'false');
             });
-            if (control.getAttribute('aria-pressed') !== 'true') videos[activeIndex].play().catch(function () {});
+            videos[activeIndex].play().catch(function () {});
         }
 
         function startRotation() {
-            clearInterval(rotation);
-            rotation = setInterval(function () { showVideo((activeIndex + 1) % videos.length); }, 12000);
+            clearTimeout(rotation);
+            clearTimeout(preloadTimer);
+            if (!canPlay()) return;
+            const nextIndex = (activeIndex + 1) % videos.length;
+            preloadTimer = setTimeout(function () { ensureLoaded(videos[nextIndex]); }, 7000);
+            rotation = setTimeout(async function () {
+                await showVideo(nextIndex);
+                startRotation();
+            }, 12000);
         }
 
         if (videos.length && control) {
+            videos[0].addEventListener('loadeddata', function () {
+                videos[0].classList.add('is-video-ready');
+            }, { once: true });
             if (reduceMotion.matches) setMotion(true);
             else startRotation();
             control.addEventListener('click', function () { setMotion(control.getAttribute('aria-pressed') !== 'true'); });
             pagination.forEach(function (dot, index) {
-                dot.addEventListener('click', function () {
-                    showVideo(index);
-                    if (control.getAttribute('aria-pressed') !== 'true') startRotation();
+                dot.addEventListener('click', async function () {
+                    await showVideo(index);
+                    startRotation();
                 });
+            });
+
+            if ('IntersectionObserver' in window) {
+                new IntersectionObserver(function (entries) {
+                    heroVisible = entries[0].isIntersecting;
+                    if (canPlay()) {
+                        videos[activeIndex].play().catch(function () {});
+                        startRotation();
+                    } else {
+                        videos.forEach(function (video) { video.pause(); });
+                        clearTimeout(rotation);
+                        clearTimeout(preloadTimer);
+                    }
+                }, { threshold: 0.08 }).observe(document.querySelector('.video-hero'));
+            }
+
+            document.addEventListener('visibilitychange', function () {
+                if (canPlay()) {
+                    videos[activeIndex].play().catch(function () {});
+                    startRotation();
+                } else {
+                    videos.forEach(function (video) { video.pause(); });
+                    clearTimeout(rotation);
+                    clearTimeout(preloadTimer);
+                }
             });
         }
     });

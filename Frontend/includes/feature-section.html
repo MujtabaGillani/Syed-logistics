@@ -21,7 +21,7 @@
                     </div>
                 </div>
                 <div class="d-flex mb-0 wow fadeInUp" data-wow-delay="0.7s">
-                    <i class="fa fa-headphones text-primary fa-3x flex-shrink-0"></i>
+                    <i class="fab fa-whatsapp text-primary fa-3x flex-shrink-0"></i>
                     <div class="ms-4">
                         <h5>24/7 Customer Support</h5>
                         <p class="mb-0">When you need a status update, document check, or quick answer, our team is ready to help.</p>
@@ -30,8 +30,8 @@
             </div>
             <div class="col-lg-6 pe-lg-0 wow fadeInRight" data-wow-delay="0.1s" style="min-height: 400px;">
                 <div class="position-relative h-100">
-                    <video class="feature-preview position-absolute w-100 h-100" muted loop playsinline preload="metadata" poster="{% static 'img/feature.jpg' %}" aria-label="Logistics operations in motion">
-                        <source src="{% static 'video/LE.mp4' %}" type="video/mp4">
+                    <video class="feature-preview position-absolute w-100 h-100" muted loop playsinline preload="none" poster="{% static 'img/feature.jpg' %}" aria-label="Logistics operations in motion">
+                        <source data-src="{% static 'video/LE.mp4' %}" type="video/mp4">
                     </video>
                 </div>
             </div>

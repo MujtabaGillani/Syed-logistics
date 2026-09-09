@@ -220,29 +220,59 @@
     //     }
     // });
 
-    // Service previews run continuously to keep the service grid lively.
+    // Load media only when it is close to the viewport. This avoids decoding
+    // every homepage video at once and leaves posters visible while loading.
     const serviceVideos = document.querySelectorAll('.service-preview');
     const featureVideos = document.querySelectorAll('.feature-preview, .content-preview');
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (!reduceMotion.matches) {
-        serviceVideos.forEach(function (video) {
-            video.play().catch(function () {});
+
+    function loadLazyVideo(video) {
+        if (video.dataset.loaded === 'true') return;
+        video.querySelectorAll('source[data-src]').forEach(function (source) {
+            source.src = source.dataset.src;
+            source.removeAttribute('data-src');
         });
+        video.dataset.loaded = 'true';
+        video.load();
     }
 
-    // The feature panel is a single large video, so it can safely play while in view.
-    if (featureVideos.length && !reduceMotion.matches && 'IntersectionObserver' in window) {
-        const featureVideoObserver = new IntersectionObserver(function (entries) {
+    function markReady(video) {
+        if (video.readyState >= 2) video.classList.add('is-video-ready');
+        else video.addEventListener('loadeddata', function () {
+            video.classList.add('is-video-ready');
+        }, { once: true });
+    }
+
+    const lazyVideos = Array.from(serviceVideos).concat(Array.from(featureVideos));
+    if (lazyVideos.length && !reduceMotion.matches && 'IntersectionObserver' in window) {
+        const videoObserver = new IntersectionObserver(function (entries) {
             entries.forEach(function (entry) {
                 const video = entry.target;
-                if (entry.isIntersecting) {
+                video.dataset.inViewport = entry.isIntersecting ? 'true' : 'false';
+                if (entry.isIntersecting && !document.hidden) {
+                    loadLazyVideo(video);
+                    markReady(video);
                     video.play().catch(function () {});
                 } else {
                     video.pause();
                 }
             });
-        }, { threshold: 0.35 });
-        featureVideos.forEach(function (video) { featureVideoObserver.observe(video); });
+        }, { rootMargin: '0px', threshold: 0.2 });
+        lazyVideos.forEach(function (video) { videoObserver.observe(video); });
+
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+                lazyVideos.forEach(function (video) { video.pause(); });
+            } else {
+                lazyVideos.forEach(function (video) {
+                    if (video.dataset.inViewport === 'true') {
+                        loadLazyVideo(video);
+                        markReady(video);
+                        video.play().catch(function () {});
+                    }
+                });
+            }
+        });
     }
     
 })(jQuery);
