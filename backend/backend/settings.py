@@ -41,6 +41,18 @@ DEBUG = env_bool('DEBUG', True)
 
 ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', '*').split(',') if h.strip()]
 
+# Hosts are allowed to reach Django; trusted origins are separately allowed to
+# submit CSRF-protected forms through a reverse proxy. Values must include the
+# scheme, for example: https://example.com,http://127.0.0.1:8000
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origin.strip()
+]
+
+# Honour the original scheme supplied by nginx when production runs behind it.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 
 # Application definition
 
