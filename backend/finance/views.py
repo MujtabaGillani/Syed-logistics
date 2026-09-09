@@ -32,6 +32,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.permissions import IsAuthenticated
 
 from . import exports, imports
 from .models import (
@@ -81,7 +82,11 @@ def _parse_date(value):
         return None
 
 
-class CustomerViewSet(viewsets.ModelViewSet):
+class AuthenticatedModelViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+
+
+class CustomerViewSet(AuthenticatedModelViewSet):
     """Full CRUD for customers.
 
     Deleting a customer that still has vouchers is blocked at the DB level
@@ -155,7 +160,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
         return Response(result, status=status.HTTP_200_OK)
 
 
-class GeneralVoucherViewSet(viewsets.ModelViewSet):
+class GeneralVoucherViewSet(AuthenticatedModelViewSet):
     """Sales vouchers — create / read / update only.
 
     Vouchers are an audit trail, so DELETE is intentionally disabled.
@@ -251,7 +256,7 @@ class GeneralVoucherViewSet(viewsets.ModelViewSet):
         return Response(result, status=status.HTTP_200_OK)
 
 
-class OfficeExpenseViewSet(viewsets.ModelViewSet):
+class OfficeExpenseViewSet(AuthenticatedModelViewSet):
     """Full CRUD for office expenses (supports image upload via multipart)."""
 
     queryset = OfficeExpense.objects.all()
@@ -294,7 +299,7 @@ class OfficeExpenseViewSet(viewsets.ModelViewSet):
         return Response(result, status=status.HTTP_200_OK)
 
 
-class ItemViewSet(viewsets.ModelViewSet):
+class ItemViewSet(AuthenticatedModelViewSet):
     """Catalogue of items. ?search=LMS matches SKU or name (for the sale-order
     item dropdown / typeahead)."""
 
@@ -314,7 +319,7 @@ class ItemViewSet(viewsets.ModelViewSet):
         return qs
 
 
-class SaleOrderViewSet(viewsets.ModelViewSet):
+class SaleOrderViewSet(AuthenticatedModelViewSet):
     """Sale orders (itemised invoices). Audit trail: no delete, and the line
     items / total / customer are locked after creation."""
 
@@ -377,7 +382,7 @@ class SaleOrderViewSet(viewsets.ModelViewSet):
         return Response(data)
 
 
-class EmployeeViewSet(viewsets.ModelViewSet):
+class EmployeeViewSet(AuthenticatedModelViewSet):
     """Full CRUD for employees. ?search= matches name/cnic/phone/designation;
     ?active=1 limits to active staff."""
 
@@ -399,7 +404,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         return qs
 
 
-class ShipmentViewSet(viewsets.ModelViewSet):
+class ShipmentViewSet(AuthenticatedModelViewSet):
     """Shipments with multiple customers, items and photos.
 
     Core fields are JSON; images are uploaded via the ``upload_images`` action
@@ -469,7 +474,7 @@ class ShipmentViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class PaymentViewSet(viewsets.ModelViewSet):
+class PaymentViewSet(AuthenticatedModelViewSet):
     """Payments knocked off against vouchers. Append-only: create + read only,
     never edited or deleted, so the ledger stays tamper-proof.
 
@@ -587,6 +592,7 @@ def build_customer_ledger(customer):
 
 
 class DashboardSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
     """Aggregated KPIs + a 12-month profit/loss series for the dashboard.
 
     Optional ?from=YYYY-MM-DD&to=YYYY-MM-DD narrows the headline KPI totals

@@ -174,9 +174,6 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Django REST Framework
-# This is an internal management tool without a login wall, so the finance
-# API is open. SessionAuthentication keeps it usable from the admin while
-# still skipping CSRF for anonymous browser requests.
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
@@ -184,6 +181,18 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
+}
+
+# Celery uses Redis for its queue. Beat runs the inactive-signup cleanup once
+# an hour; the task itself only removes dashboard signups older than 48 hours.
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://redis:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    'cleanup-inactive-dashboard-users': {
+        'task': 'coreFE.tasks.cleanup_inactive_users',
+        'schedule': 60 * 60,
+    },
 }
 
 # Default primary key field type

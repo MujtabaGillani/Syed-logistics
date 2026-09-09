@@ -1,7 +1,9 @@
+{% load static %}
 <!-- Navbar Start -->
 <nav class="navbar navbar-expand-lg bg-white navbar-light shadow border-top border-5 border-primary sticky-top p-0">
-    <a href="/" class="navbar-brand bg-primary d-flex align-items-center px-4 px-lg-5">
-        <h2 class="mb-2 text-white">Syed Logistic</h2>
+    <a href="/" class="navbar-brand brand-logo d-flex align-items-center px-3 px-lg-4" aria-label="Syed Logistics home">
+        <img src="{% static 'img/logo.svg' %}" alt="Syed Logistics" width="154" height="66">
+        <span class="brand-logo__name">Syed <strong>Logistic</strong></span>
     </a>
     <button type="button" class="navbar-toggler me-4" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
         <span class="navbar-toggler-icon"></span>
@@ -23,6 +25,7 @@
                 </div>
             </div>
             <a href="/contact/" class="nav-item nav-link {% if request.path == '/contact/' %}active{% endif %}">Contact</a>
+            {% if request.user.is_authenticated %}
             <div class="nav-item dropdown">
                 <a href="#" class="nav-link dropdown-toggle {% if '/dashboard' in request.path or '/customers' in request.path or '/general-vouchers' in request.path or '/office-expenses' in request.path %}active{% endif %}" data-bs-toggle="dropdown">Dashboard</a>
                 <div class="dropdown-menu fade-up m-0">
@@ -34,10 +37,24 @@
                     <a href="/employees/" class="dropdown-item {% if request.path == '/employees/' %}active{% endif %}"><i class="fa fa-id-badge me-2"></i>Employees</a>
                     <a href="/general-vouchers/" class="dropdown-item {% if request.path == '/general-vouchers/' %}active{% endif %}"><i class="fa fa-file-invoice-dollar me-2"></i>General Vouchers</a>
                     <a href="/office-expenses/" class="dropdown-item {% if request.path == '/office-expenses/' %}active{% endif %}"><i class="fa fa-receipt me-2"></i>Office Expenses</a>
+                    <div class="dropdown-divider"></div>
+                    <form method="post" action="{% url 'dashboard_logout' %}">
+                        {% csrf_token %}
+                        <button class="dropdown-item" type="submit"><i class="fa fa-sign-out-alt me-2"></i>Sign out</button>
+                    </form>
                 </div>
             </div>
+            {% else %}
+            <a href="{% url 'dashboard' %}" class="nav-item nav-link js-dashboard-login" data-bs-toggle="modal" data-bs-target="#loginModal">Dashboard</a>
+            {% endif %}
         </div>
+        {% if request.user.is_authenticated %}
+        <div class="navbar-user d-none d-xl-flex align-items-center">
+            <span class="navbar-user__avatar"><i class="fa fa-user"></i></span>
+            <span><small>Signed in as</small><strong>{{ request.user.get_full_name|default:request.user.email }}</strong></span>
+        </div>
+        {% endif %}
         <h4 class="m-0 pe-lg-5 d-none d-lg-block"><i class="fa fa-headphones text-primary me-3"></i>+92 329 8756 059</h4>
     </div>
 </nav>
-<!-- Navbar End --> 
+<!-- Navbar End -->

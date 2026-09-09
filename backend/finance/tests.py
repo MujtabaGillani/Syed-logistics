@@ -12,6 +12,7 @@ from decimal import Decimal
 from io import BytesIO
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APITestCase
 from openpyxl import Workbook
@@ -44,8 +45,18 @@ def make_xlsx(headers, rows):
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
-class FinanceApiTests(APITestCase):
+class AuthenticatedAPITestCase(APITestCase):
     def setUp(self):
+        super().setUp()
+        self.dashboard_user = User.objects.create_user(
+            username='finance@example.com', password='TestPass!482'
+        )
+        self.client.force_authenticate(self.dashboard_user)
+
+
+class FinanceApiTests(AuthenticatedAPITestCase):
+    def setUp(self):
+        super().setUp()
         self.customer = Customer.objects.create(
             name='Ali', sur_name='Khan', cnic='35202-1234567-1',
             contact_number='03001234567', address='123 St', city='Lahore',
@@ -326,7 +337,7 @@ class FinanceApiTests(APITestCase):
         self.assertTrue(OfficeExpense.objects.filter(name='Office Rent').exists())
 
 
-class EmployeeTests(APITestCase):
+class EmployeeTests(AuthenticatedAPITestCase):
     def test_employee_crud_and_search(self):
         r = self.client.post('/api/finance/employees/', {
             'name': 'Bilal', 'designation': 'Driver',
@@ -358,8 +369,9 @@ class EmployeeTests(APITestCase):
         self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
 
 
-class SaleOrderTests(APITestCase):
+class SaleOrderTests(AuthenticatedAPITestCase):
     def setUp(self):
+        super().setUp()
         self.customer = Customer.objects.create(
             name='Ali', sur_name='Khan', cnic='35202-1234567-1',
             contact_number='03001234567', address='123 St', city='Lahore')

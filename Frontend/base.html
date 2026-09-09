@@ -9,8 +9,12 @@
     <meta content="freight forwarding, air freight, ocean freight, road transport, customs clearance, warehousing" name="keywords">
     <meta content="Syed Logistic provides practical freight forwarding, customs clearance, warehousing, and supply-chain support." name="description">
 
-    <!-- Favicon -->
-    <link href="{% static 'img/favicon.ico' %}" rel="icon">
+    <!-- App icons generated from the Syed Logistics brand mark -->
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'img/favicon-16x16.png' %}">
+    <link rel="manifest" href="{% static 'img/site.webmanifest' %}">
+    <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}">
 
     <!-- Google Web Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -46,6 +50,70 @@
     <!-- Navbar -->
     {% include 'includes/navbar.html' %}
 
+    {% if not request.user.is_authenticated %}
+    <div class="modal fade auth-modal" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <button type="button" class="btn-close auth-modal__close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="auth-modal__brand"><img src="{% static 'img/logo.svg' %}" alt="Syed Logistics"></div>
+                <div class="modal-body p-4 p-sm-5 pt-3">
+                    <div class="auth-modal__heading text-center">
+                        <span>Secure workspace</span>
+                        <h2 id="loginModalLabel">Dashboard login</h2>
+                        <p>Enter your approved account details to continue.</p>
+                    </div>
+                    <div class="alert d-none auth-message" id="loginMessage" role="alert"></div>
+                    <form id="loginForm" method="post" action="{% url 'dashboard_login' %}" novalidate>
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label" for="loginEmail">Email address</label>
+                            <input class="form-control" type="email" id="loginEmail" name="email" autocomplete="email" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label" for="loginPassword">Password</label>
+                            <div class="password-field">
+                                <input class="form-control" type="password" id="loginPassword" name="password" autocomplete="current-password" required>
+                                <button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false"><i class="fa fa-eye"></i></button>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary w-100 py-3 auth-submit" type="submit">Login to dashboard</button>
+                    </form>
+                    <p class="auth-modal__switch text-center mb-0">Don't have an account? <button type="button" data-auth-switch="signup">Sign up</button></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade auth-modal" id="signupModal" tabindex="-1" aria-labelledby="signupModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <button type="button" class="btn-close auth-modal__close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="auth-modal__brand"><img src="{% static 'img/logo.svg' %}" alt="Syed Logistics"></div>
+                <div class="modal-body p-4 p-sm-5 pt-3">
+                    <div class="auth-modal__heading text-center">
+                        <span>Request dashboard access</span>
+                        <h2 id="signupModalLabel">Create your account</h2>
+                        <p>Your account will require administrator approval before login.</p>
+                    </div>
+                    <div class="alert d-none auth-message" id="signupMessage" role="alert"></div>
+                    <form id="signupForm" method="post" action="{% url 'dashboard_signup' %}" novalidate>
+                        {% csrf_token %}
+                        <div class="row g-3">
+                            <div class="col-md-6"><label class="form-label" for="signupName">Full name</label><input class="form-control" id="signupName" name="name" autocomplete="name" required><div class="invalid-feedback"></div></div>
+                            <div class="col-md-6"><label class="form-label" for="signupContact">Contact number</label><input class="form-control" type="tel" id="signupContact" name="contact_number" autocomplete="tel" required><div class="invalid-feedback"></div></div>
+                            <div class="col-12"><label class="form-label" for="signupEmail">Email address</label><input class="form-control" type="email" id="signupEmail" name="email" autocomplete="email" required><div class="invalid-feedback"></div></div>
+                            <div class="col-md-6"><label class="form-label" for="signupPassword">Password</label><div class="password-field"><input class="form-control" type="password" id="signupPassword" name="password" autocomplete="new-password" required><button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false"><i class="fa fa-eye"></i></button></div><div class="invalid-feedback"></div></div>
+                            <div class="col-md-6"><label class="form-label" for="signupPasswordConfirm">Confirm password</label><div class="password-field"><input class="form-control" type="password" id="signupPasswordConfirm" name="password_confirm" autocomplete="new-password" required><button type="button" class="password-toggle" aria-label="Show password" aria-pressed="false"><i class="fa fa-eye"></i></button></div><div class="invalid-feedback"></div></div>
+                        </div>
+                        <button class="btn btn-primary w-100 py-3 mt-4 auth-submit" type="submit">Create account</button>
+                    </form>
+                    <p class="auth-modal__switch text-center mb-0">Already registered? <button type="button" data-auth-switch="login">Login</button></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Main Content -->
     {% block content %}{% endblock %}
 
@@ -58,6 +126,7 @@
     <!-- JavaScript Libraries -->
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/auth.js' %}?v=20260909-1"></script>
     <script src="{% static 'lib/wow/wow.min.js' %}"></script>
     <script src="{% static 'lib/easing/easing.min.js' %}"></script>
     <script src="{% static 'lib/waypoints/waypoints.min.js' %}"></script>
@@ -65,7 +134,7 @@
     <script src="{% static 'lib/owlcarousel/owl.carousel.min.js' %}"></script>
 
     <!-- Template Javascript -->
-    <script src="{% static 'js/main.js' %}"></script>
+    <script src="{% static 'js/main.js' %}?v=20260909-auth4"></script>
     
     {% block extra_js %}{% endblock %}
 </body>

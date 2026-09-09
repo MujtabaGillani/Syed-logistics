@@ -10,6 +10,35 @@ services:
       - default
       - proxy_net
     restart: always
+    depends_on:
+      - db
+      - redis
+
+  worker:
+    build: .
+    container_name: syed_worker
+    command: celery -A backend worker --loglevel=info
+    env_file:
+      - .env
+    networks:
+      - default
+    restart: always
+    depends_on:
+      - db
+      - redis
+
+  beat:
+    build: .
+    container_name: syed_beat
+    command: celery -A backend beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    env_file:
+      - .env
+    networks:
+      - default
+    restart: always
+    depends_on:
+      - db
+      - redis
 
   db:
     image: postgres:15
@@ -20,6 +49,11 @@ services:
       - .env
     ports:
       - "127.0.0.1:5433:5432"
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: syed_redis
     restart: always
 
 networks:

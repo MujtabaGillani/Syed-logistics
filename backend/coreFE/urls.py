@@ -7,7 +7,7 @@ from .views import (
     CustomClearanceView, WarehouseView, LogisticSolView, SupplyChainView,
     DashboardView, CustomersView, GeneralVouchersView, OfficeExpensesView,
     SaleOrdersView, ItemsView, ShipmentsView, EmployeesView,
-    health_check
+    dashboard_login, dashboard_logout, dashboard_signup, health_check
 )
 
 urlpatterns = [
@@ -43,6 +43,9 @@ urlpatterns = [
     path('shipments/', ShipmentsView.as_view(), name='shipments'),
     path('employees/', EmployeesView.as_view(), name='employees'),
     path('items/', ItemsView.as_view(), name='items'),
+    path('account/login/', dashboard_login, name='dashboard_login'),
+    path('account/signup/', dashboard_signup, name='dashboard_signup'),
+    path('account/logout/', dashboard_logout, name='dashboard_logout'),
 
     # Health check endpoint
     path('health/', health_check, name='health'),
