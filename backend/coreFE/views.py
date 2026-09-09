@@ -1,4 +1,6 @@
 import json
+import uuid
+import logging
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -15,6 +17,8 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 from .models import UserProfile
+
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 
@@ -60,6 +64,12 @@ class TermsView(TemplateView):
 
 class NotFoundView(TemplateView):
     template_name = '404.html'
+
+
+def server_error(request):
+    reference = uuid.uuid4().hex[:8].upper()
+    logger.error('Server error response [reference=%s] path=%s', reference, request.path)
+    return render(request, '500.html', {'error_reference': reference}, status=500)
 
 # Service Views
 class AirFreightView(TemplateView):

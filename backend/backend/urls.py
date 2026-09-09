@@ -25,6 +25,8 @@ from django.views.generic import TemplateView
 
 from blog.sitemaps import BlogSitemap, StaticViewSitemap
 
+handler500 = 'coreFE.views.server_error'
+
 sitemaps = {
     'static': StaticViewSitemap,
     'blog': BlogSitemap,
