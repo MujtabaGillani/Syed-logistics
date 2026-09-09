@@ -55,6 +55,25 @@ class DashboardAuthenticationTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertIn('No account was found', response.json()['message'])
 
+    def test_admin_created_user_can_login_with_email(self):
+        User.objects.create_user(
+            username='Shoaib',
+            email='sgillani58@gmail.com',
+            password='StrongPass!482',
+        )
+
+        response = self.client.post(
+            reverse('dashboard_login'),
+            json.dumps({
+                'email': 'SGILLANI58@gmail.com',
+                'password': 'StrongPass!482',
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['redirect'], '/dashboard/')
+
     def test_regular_form_login_also_handles_unknown_email(self):
         response = self.client.post(reverse('dashboard_login'), {
             'email': 'missing@example.com',

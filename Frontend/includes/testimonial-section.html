@@ -18,9 +18,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to create star rating HTML
     function createStarRating(rating) {
         let stars = '';
+        const numericRating = Math.max(1, Math.min(5, Number(rating) || 0));
         for (let i = 1; i <= 5; i++) {
-            if (i <= rating) {
+            if (numericRating >= i) {
                 stars += '<i class="fa fa-star text-warning"></i>';
+            } else if (numericRating >= i - 0.5) {
+                stars += '<i class="fa fa-star-half-o text-warning"></i>';
             } else {
                 stars += '<i class="fa fa-star-o text-muted"></i>';
             }

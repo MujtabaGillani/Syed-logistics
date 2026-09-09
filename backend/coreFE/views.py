@@ -143,7 +143,13 @@ def dashboard_login(request):
 
     email = User.objects.normalize_email(data.get('email', '')).lower()
     password = data.get('password', '')
-    account = User.objects.filter(username=email).only('is_active').first()
+    # Dashboard signups use the email address as the username, while users
+    # created in Django admin may have a separate username (for example,
+    # username="Shoaib" and email="sgillani58@gmail.com").  Resolve either
+    # kind of account by the email entered in the login form.
+    account = User.objects.filter(email__iexact=email).only('username', 'is_active').first()
+    if account is None:
+        account = User.objects.filter(username__iexact=email).only('username', 'is_active').first()
     if account is None:
         return JsonResponse({
             'message': 'No account was found with this email address. Please sign up first.'
@@ -154,7 +160,7 @@ def dashboard_login(request):
             'message': 'Your account is awaiting administrator approval.'
         }, status=403)
 
-    user = authenticate(request, username=email, password=password)
+    user = authenticate(request, username=account.username, password=password)
     if user is not None:
         login(request, user)
         return JsonResponse({'message': 'Welcome back.', 'redirect': '/dashboard/'})
