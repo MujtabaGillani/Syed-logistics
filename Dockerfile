@@ -47,8 +47,9 @@ RUN chmod +x /scripts/*.sh
 RUN addgroup --gid 1001 appuser \
  && adduser --uid 1001 --gid 1001 --disabled-password --gecos "" appuser
 
-# Create staticfiles directory with correct ownership
-RUN mkdir -p /app/staticfiles && chown -R appuser:appuser /app/staticfiles
+# Create static and uploaded-media directories with correct ownership.
+RUN mkdir -p /app/staticfiles /app/media \
+ && chown -R appuser:appuser /app/staticfiles /app/media
 
 # Create data directory with proper owner
 RUN mkdir -p /app/data && chown -R appuser:appuser /app/data

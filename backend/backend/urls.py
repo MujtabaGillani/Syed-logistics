@@ -18,6 +18,8 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.static import serve
+from django.urls import re_path
 from django.contrib.sitemaps.views import sitemap
 from django.views.generic import TemplateView
 
@@ -51,3 +53,9 @@ if settings.DEBUG:
     urlpatterns += static('/js/', document_root=settings.STATICFILES_DIRS[0] / 'js')
     urlpatterns += static('/img/', document_root=settings.STATICFILES_DIRS[0] / 'img')
     urlpatterns += static('/lib/', document_root=settings.STATICFILES_DIRS[0] / 'lib')
+else:
+    # Blog images are public assets. The persistent media volume is served by
+    # Django unless the reverse proxy is configured to handle /media/ itself.
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    ]

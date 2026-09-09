@@ -6,6 +6,7 @@ services:
       - .env
     volumes:
       - ./backend/staticfiles:/app/staticfiles
+      - media_data:/app/media
     networks:
       - default
       - proxy_net
@@ -62,3 +63,4 @@ networks:
 
 volumes:
   postgres_data:
+  media_data:
