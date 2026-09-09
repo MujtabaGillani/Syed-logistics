@@ -6,8 +6,12 @@
     <meta charset="utf-8">
     <title>{% block title %}Syed Logistic | Freight & Supply Chain Solutions{% endblock %}</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <meta content="freight forwarding, air freight, ocean freight, road transport, customs clearance, warehousing" name="keywords">
-    <meta content="Syed Logistic provides practical freight forwarding, customs clearance, warehousing, and supply-chain support." name="description">
+    <meta name="keywords" content="{% block meta_keywords %}freight forwarding, air freight, ocean freight, road transport, customs clearance, warehousing{% endblock %}">
+    <meta name="description" content="{% block meta_description %}Syed Logistic provides practical freight forwarding, customs clearance, warehousing, and supply-chain support.{% endblock %}">
+    {% block meta_robots %}{% endblock %}
+    {% block canonical %}{% endblock %}
+    {% block social_meta %}{% endblock %}
+    {% block structured_data %}{% endblock %}
 
     <!-- App icons generated from the Syed Logistics brand mark -->
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/apple-touch-icon.png' %}">

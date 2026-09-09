@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ post.page_title }} | Syed Logistic{% endblock %}
+{% block meta_keywords %}{{ post.keywords }}{% endblock %}
+{% block meta_description %}{{ post.page_description }}{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ canonical_url }}">{% endblock %}
+{% block social_meta %}
+<meta property="og:type" content="article">
+<meta property="og:title" content="{{ post.page_title }}">
+<meta property="og:description" content="{{ post.page_description }}">
+<meta property="og:url" content="{{ canonical_url }}">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ post.main_image.url }}">
+<meta property="og:image:alt" content="{{ post.main_image_alt }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ post.page_title }}">
+<meta name="twitter:description" content="{{ post.page_description }}">
+<meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{{ post.main_image.url }}">
+{% endblock %}
+{% block structured_data %}
+<script type="application/ld+json">{{ article_schema|safe }}</script>
+{% endblock %}
+
+{% block content %}
+<main class="article-page">
+    <header class="article-header container">
+        <nav class="article-breadcrumb" aria-label="Breadcrumb">
+            <a href="{% url 'home' %}">Home</a><span>/</span><a href="{% url 'blog:list' %}">Blog</a><span>/</span><span aria-current="page">{{ post.title }}</span>
+        </nav>
+        <div class="article-header__inner">
+            <span class="blog-eyebrow">Logistics insight</span>
+            <h1>{{ post.title }}</h1>
+            <p class="article-lead">{{ post.summary }}</p>
+            <div class="article-byline">
+                <span><i class="far fa-calendar-alt"></i> {{ post.published_at|date:'F j, Y' }}</span>
+                <span><i class="far fa-clock"></i> {{ post.reading_time }} min read</span>
+                {% if post.author %}<span><i class="far fa-user"></i> {{ post.author.get_full_name|default:post.author.username }}</span>{% endif %}
+            </div>
+        </div>
+    </header>
+
+    <div class="article-main-image container">
+        <img src="{{ post.main_image.url }}" alt="{{ post.main_image_alt }}" width="1200" height="675">
+    </div>
+
+    <div class="article-layout container">
+        <article class="article-content">
+            {{ post.content|linebreaks }}
+
+            {% if post.secondary_images.all %}
+            <div class="article-gallery">
+                {% for image in post.secondary_images.all %}
+                <figure>
+                    <img src="{{ image.image.url }}" alt="{{ image.alt_text }}" loading="lazy">
+                    {% if image.caption %}<figcaption>{{ image.caption }}</figcaption>{% endif %}
+                </figure>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if post.keywords %}
+            <div class="article-topics"><strong>Topics:</strong> {{ post.keywords }}</div>
+            {% endif %}
+        </article>
+        <aside class="article-cta">
+            <span>Need logistics support?</span>
+            <h2>Let’s move your cargo with confidence.</h2>
+            <p>Talk to our team about a freight solution shaped around your shipment.</p>
+            <a href="{% url 'contact' %}" class="btn btn-secondary w-100 py-3">Contact our team</a>
+        </aside>
+    </div>
+
+    {% if related_posts %}
+    <section class="related-posts">
+        <div class="container">
+            <span class="blog-eyebrow">Keep reading</span>
+            <h2>More logistics insights</h2>
+            <div class="row g-4 mt-2">
+                {% for related in related_posts %}
+                <div class="col-md-4">
+                    <a class="related-card" href="{{ related.get_absolute_url }}">
+                        <img src="{{ related.main_image.url }}" alt="{{ related.main_image_alt }}" loading="lazy">
+                        <span>{{ related.published_at|date:'M j, Y' }}</span>
+                        <h3>{{ related.title }}</h3>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+</main>
+{% endblock %}

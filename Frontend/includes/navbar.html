@@ -13,6 +13,7 @@
             <a href="/" class="nav-item nav-link {% if request.path == '/' %}active{% endif %}">Home</a>
             <a href="/about/" class="nav-item nav-link {% if request.path == '/about/' %}active{% endif %}">About</a>
             <a href="/service/" class="nav-item nav-link {% if request.path == '/service/' %}active{% endif %}">Services</a>
+            <a href="{% url 'blog:list' %}" class="nav-item nav-link {% if '/blog/' in request.path %}active{% endif %}">Blog</a>
             <div class="nav-item dropdown">
                 <a href="#" class="nav-link dropdown-toggle {% if request.path == '/team/' %}active{% endif %}" data-bs-toggle="dropdown">Pages</a>
                 <div class="dropdown-menu fade-up m-0">
