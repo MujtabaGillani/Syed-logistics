@@ -17,7 +17,7 @@
                         <h6>Request a quote</h6>
                         <h1>Tell us where it is going.</h1>
                     </div>
-                <form>
+                <form class="whatsapp-quote-form">
                     <div class="row g-3">
                         <div class="col-md-6">
                             <div class="form-floating">
@@ -52,7 +52,7 @@
                             </div>
                         </div>
                         <div class="col-12">
-                            <button class="btn btn-primary w-100 py-3" type="submit">Request your quote <i class="fa fa-arrow-right ms-2"></i></button>
+                            <button class="btn btn-primary w-100 py-3" type="submit">Request your quote <i class="fab fa-whatsapp ms-2" aria-hidden="true"></i> <i class="fa fa-arrow-right ms-2" aria-hidden="true"></i></button>
                         </div>
                     </div>
                 </form>
@@ -61,4 +61,15 @@
         </div>
     </div>
 </section>
+<script>
+document.currentScript.previousElementSibling.querySelector('.whatsapp-quote-form').addEventListener('submit', function (event) {
+    event.preventDefault();
+    const name = this.querySelector('#name').value.trim();
+    const email = this.querySelector('#email').value.trim();
+    const service = this.querySelector('#floatingSelect').selectedOptions[0].text;
+    const details = this.querySelector('#message').value.trim();
+    const message = `Hello Syed Logistic, I would like to request a quote.\n\nName: ${name || 'Not provided'}\nEmail: ${email || 'Not provided'}\nService: ${service}\nCargo, route, and timing: ${details || 'Not provided'}`;
+    window.open(`https://wa.me/9232987560590?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+});
+</script>
 <!-- Quote End -->
