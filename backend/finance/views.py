@@ -919,3 +919,53 @@ class SalarySlipViewSet(AuthenticatedModelViewSet):
                 or date.today()).year
         return Response({'number': next_document_number(
             SalarySlip, 'slip_number', f'SAL-{year}-')})
+
+
+class CompanyViewSet(AuthenticatedModelViewSet):
+    """Companies / letterheads that invoices and salary slips are issued
+    under. The default company can't be deleted (make another one default
+    first); deleting a company never changes documents already issued (they
+    keep their own snapshot of its details)."""
+
+    queryset = CompanyProfile.objects.all()
+    serializer_class = CompanyProfileSerializer
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    def get_queryset(self):
+        CompanyProfile.load()  # make sure at least the default exists
+        return super().get_queryset()
+
+    def destroy(self, request, *args, **kwargs):
+        company = self.get_object()
+        if company.is_default:
+            return Response(
+                {'detail': 'This is the default company. Make another company '
+                           'the default before deleting it.'},
+                status=status.HTTP_409_CONFLICT)
+        company.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post', 'delete'],
+            parser_classes=[MultiPartParser, FormParser])
+    def logo(self, request, pk=None):
+        """POST a ``logo`` image file to set the logo; DELETE to remove it."""
+        company = self.get_object()
+        if request.method == 'DELETE':
+            company.logo = None
+            company.save(update_fields=['logo', 'updated_at'])
+            return Response(self.get_serializer(company).data)
+        ser = self.get_serializer(company, data={'logo': request.FILES.get('logo')},
+                                  partial=True)
+        if not request.FILES.get('logo'):
+            return Response({'detail': 'Choose an image file to upload.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)
+
+    @action(detail=True, methods=['post'])
+    def make_default(self, request, pk=None):
+        company = self.get_object()
+        company.is_default = True
+        company.save()
+        return Response(self.get_serializer(company).data)

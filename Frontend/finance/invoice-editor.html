@@ -19,7 +19,6 @@
             </div>
             <div class="d-flex gap-2 flex-wrap">
                 <a href="/invoices/" class="btn btn-outline-secondary"><i class="fa fa-list me-2"></i>All Invoices</a>
-                <button type="button" class="btn btn-outline-secondary" id="btnCompany"><i class="fa fa-building me-2"></i>Company Details</button>
                 <a href="/invoices/new/" class="btn btn-primary"><i class="fa fa-plus me-2"></i>New Invoice</a>
             </div>
         </div>
@@ -27,6 +26,7 @@
         <div class="row g-4">
             <div class="col-xl-6">
                 <form class="fin-card" id="invForm" novalidate autocomplete="off">
+                    <div id="companyPanel"></div>
                     <div class="doc-form-section">
                         <h6><span><i class="fa fa-file-invoice"></i>Invoice details</span></h6>
                         <div class="row g-3">
@@ -322,7 +322,7 @@
     var form = document.getElementById('invForm');
     var linesEl = document.getElementById('lines');
     var preview = D.mountPreview(document.getElementById('docStage'));
-    var state = { company: {}, nextNumber: '', shareToken: null, catalog: [], customers: [] };
+    var state = { nextNumber: '', shareToken: null, catalog: [], customers: [] };
 
     var TEXT_FIELDS = ['invoice_number', 'invoice_date', 'due_date', 'reference_number',
         'customer', 'bill_to_name', 'bill_to_company', 'bill_to_phone', 'bill_to_email', 'bill_to_cnic',
@@ -340,6 +340,20 @@
     function field(name) { return form.elements[name]; }
     function val(name) { return (field(name).value || '').trim(); }
     function setVal(name, v) { field(name).value = v == null ? '' : v; }
+
+    // Company / letterhead: switching company swaps its default notes & terms
+    // unless they were edited on this invoice.
+    var panel = D.companyPanel(document.getElementById('companyPanel'), {
+        showBank: true,
+        onChange: function () { refresh(); },
+        onSwitch: function (prev, next) {
+            [['notes', 'invoice_notes'], ['terms', 'invoice_terms']].forEach(function (p) {
+                if (!prev || val(p[0]) === (prev[p[1]] || '').trim()) {
+                    setVal(p[0], next ? next[p[1]] : '');
+                }
+            });
+        }
+    });
 
     // ---------------------------------------------------------------- lines
     function addLine(line) {
@@ -418,6 +432,8 @@
         TEXT_FIELDS.forEach(function (n) { d[n] = val(n); });
         d.items = readLines();
         d.share_token = state.shareToken;
+        d.company = panel.companyId();
+        d.company_details = panel.details();
         return d;
     }
 
@@ -444,7 +460,7 @@
         Array.prototype.forEach.call(form.querySelectorAll('.js-bank'), function (el) {
             el.style.display = bank ? '' : 'none';
         });
-        preview.update(D.render('invoice', previewData(), state.company));
+        preview.update(D.render('invoice', previewData()));
     }
 
     var timer;
@@ -532,9 +548,6 @@
         refresh();
     });
 
-    document.getElementById('btnCompany').addEventListener('click', function () {
-        D.editCompany(function (c) { state.company = c; refresh(); });
-    });
 
     // ----------------------------------------------------------------- save
     function payload() {
@@ -547,12 +560,15 @@
             out[n] = v;
         });
         if (!out.invoice_number) { delete out.invoice_number; }
+        out.company = d.company;
+        out.company_details = d.company_details;
         out.items = d.items.filter(function (l) { return l.description || Number(l.rate); });
         return out;
     }
 
     function validate() {
         var problems = [];
+        if (!panel.details().name) { problems.push('the company name (letterhead)'); }
         if (!val('bill_to_name')) { problems.push('customer name'); }
         if (!val('invoice_date')) { problems.push('invoice date'); }
         var lines = payload().items;
@@ -600,7 +616,7 @@
     document.getElementById('btnPdf').addEventListener('click', function () {
         var btn = this;
         btn.disabled = true;
-        D.downloadPdf('invoice', previewData(), state.company)
+        D.downloadPdf('invoice', previewData())
             .catch(function (err) { F.toast((err && err.message) || 'Could not create the PDF.', 'danger'); })
             .finally(function () { btn.disabled = false; });
     });
@@ -608,7 +624,7 @@
     document.getElementById('btnShare').addEventListener('click', function () {
         // Save first so the message carries the final number and a share link.
         save().then(function (inv) {
-            D.openShare({ kind: 'invoice', data: inv, company: state.company,
+            D.openShare({ kind: 'invoice', data: inv,
                           phone: inv.bill_to_phone || inv.ship_to_phone });
         }).catch(function () {});
     });
@@ -645,11 +661,12 @@
     function fillInvoice(inv) {
         TEXT_FIELDS.forEach(function (n) { setVal(n, inv[n]); });
         setLines(inv.items);
+        panel.load(inv.company, inv.company_details);
         applySaved(inv);
     }
 
     Promise.all([
-        D.loadCompany().then(function (c) { state.company = c; }).catch(function () {}),
+        panel.ready.catch(function () { F.toast('Could not load companies.', 'warning'); }),
         loadLookups()
     ]).then(function () {
         if (invoiceId) {
@@ -658,8 +675,6 @@
             });
         }
         setVal('invoice_date', D.isoDate(new Date()));
-        setVal('notes', state.company.invoice_notes || '');
-        setVal('terms', state.company.invoice_terms || '');
         setLines([]);
         refresh();
         return F.get('invoices/next_number/', { date: val('invoice_date') }).then(function (r) {

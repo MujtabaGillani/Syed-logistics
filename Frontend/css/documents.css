@@ -48,6 +48,18 @@
 .doc-chips button:hover { border-color: var(--doc-amber); color: var(--doc-navy); }
 .doc-icon-btn { width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 
+.doc-form-section.doc-company { background: #fbfcfe; border: 1px solid #eef1f6; border-radius: 10px; padding: 1rem 1rem 1.1rem; margin-bottom: 1.8rem; }
+.doc-logo-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.doc-logo-box {
+    width: 132px; height: 72px; flex: none; display: flex; align-items: center; justify-content: center;
+    border: 1px dashed #c5cfda; border-radius: 8px; background: #fff; overflow: hidden;
+}
+.doc-logo-box img { max-width: 120px; max-height: 62px; object-fit: contain; }
+.doc-logo-box span { font-size: .75rem; color: #9aa6b6; }
+.doc-company-fields { border-top: 1px dashed #e3e8ee; padding-top: .9rem; }
+.doc-subhead { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #54627a; }
+.doc-company-status { font-size: .78rem; color: #54627a; }
+
 .doc-sum-strip {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .6rem;
     background: var(--doc-navy-soft); border-radius: 10px; padding: .8rem 1rem; margin-top: .6rem;

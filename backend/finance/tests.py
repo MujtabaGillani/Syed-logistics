@@ -907,3 +907,121 @@ class ItemQuantityTests(AuthenticatedAPITestCase):
         for bad in (-1, 'abc', 1.5):
             res = self.client.post(self.url, {'sku': f'Q-{bad}', 'name': 'x', 'quantity': bad}, format='json')
             self.assertEqual(res.status_code, 400, bad)
+
+
+import shutil
+import tempfile
+
+from django.test import override_settings
+
+from .models import CompanyProfile as Company
+
+TEMP_MEDIA = tempfile.mkdtemp(prefix='sli-media-')
+
+
+def real_png():
+    from PIL import Image
+    buf = BytesIO()
+    Image.new('RGB', (40, 20), (23, 47, 68)).save(buf, 'PNG')
+    return SimpleUploadedFile('logo.png', buf.getvalue(), content_type='image/png')
+
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA)
+class CompanyLetterheadTests(AuthenticatedAPITestCase):
+    url = '/api/finance/companies/'
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA, ignore_errors=True)
+
+    def invoice(self, **overrides):
+        res = self.client.post('/api/finance/invoices/', invoice_payload(**overrides), format='json')
+        self.assertEqual(res.status_code, 201, res.data)
+        return res.data
+
+    def test_default_company_and_switching(self):
+        default = self.client.get(self.url).data
+        self.assertEqual(len(default), 1)
+        self.assertTrue(default[0]['is_default'])
+        self.assertEqual(default[0]['logo_url'], '/static/img/logo.svg')
+        res = self.client.post(self.url, {'name': 'Gillani Traders', 'phone': '042-111'}, format='json')
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertFalse(res.data['is_default'])
+        self.assertEqual(res.data['logo_url'], '')
+        res = self.client.post(self.url + f"{res.data['id']}/make_default/")
+        self.assertTrue(res.data['is_default'])
+        self.assertEqual(Company.objects.filter(is_default=True).count(), 1)
+        self.assertEqual(Company.load().name, 'Gillani Traders')
+        # The default can't be deleted; another one can.
+        self.assertEqual(self.client.delete(self.url + f"{res.data['id']}/").status_code, 409)
+        self.assertEqual(self.client.delete(self.url + f"{default[0]['id']}/").status_code, 204)
+        self.assertEqual(self.client.post(self.url, {'name': '  '}, format='json').status_code, 400)
+
+    def test_invoice_snapshots_selected_company(self):
+        inv = self.invoice()
+        self.assertEqual(inv['company'], Company.load().id)
+        self.assertEqual(inv['company_details']['name'], 'Syed Logistic')
+        self.assertEqual(inv['company_details']['logo'], '/static/img/logo.svg')
+        other = Company.objects.create(name='Gillani Traders', phone='042-111', bank_name='HBL')
+        inv2 = self.invoice(company=other.id)
+        self.assertEqual(inv2['company_details']['name'], 'Gillani Traders')
+        self.assertEqual(inv2['company_details']['bank_name'], 'HBL')
+        self.assertEqual(inv2['company_details']['logo'], '')
+        # Editing the company later never changes issued invoices.
+        other.name = 'Renamed'
+        other.save()
+        fresh = self.client.get(f"/api/finance/invoices/{inv2['id']}/").data
+        self.assertEqual(fresh['company_details']['name'], 'Gillani Traders')
+        # A PATCH that doesn't touch the letterhead keeps it.
+        res = self.client.patch(f"/api/finance/invoices/{inv2['id']}/", {'notes': 'x'}, format='json')
+        self.assertEqual(res.data['company_details']['name'], 'Gillani Traders')
+        # Switching company re-snapshots.
+        res = self.client.patch(f"/api/finance/invoices/{inv2['id']}/", {'company': Company.load().id}, format='json')
+        self.assertEqual(res.data['company_details']['name'], 'Syed Logistic')
+        # Deleting a company keeps the invoice's letterhead.
+        other.delete()
+        kept = Invoice.objects.get(pk=inv['id'])
+        self.assertEqual(kept.company_details['name'], 'Syed Logistic')
+
+    def test_details_edited_for_one_document(self):
+        details = {'name': 'Syed Logistic (Karachi)', 'phone': '021-555', 'address': 'Port Qasim',
+                   'logo': '/static/img/logo.svg', 'unknown': 'dropped'}
+        inv = self.invoice(company_details=details)
+        self.assertEqual(inv['company_details']['name'], 'Syed Logistic (Karachi)')
+        self.assertNotIn('unknown', inv['company_details'])
+        self.assertEqual(Company.load().name, 'Syed Logistic')  # company itself unchanged
+        for bad in ({'name': ''}, {'name': 'X', 'logo': 'https://evil.example/x.png'},
+                    {'name': 'X', 'phone': 123}, 'not-an-object'):
+            res = self.client.post('/api/finance/invoices/', invoice_payload(company_details=bad), format='json')
+            self.assertEqual(res.status_code, 400, bad)
+
+    def test_salary_slip_company(self):
+        other = Company.objects.create(name='Gillani Traders')
+        res = self.client.post('/api/finance/salary-slips/', slip_payload(company=other.id), format='json')
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(res.data['company_details']['name'], 'Gillani Traders')
+        share = APIClient().get(f"/share/salary-slip/{res.data['share_token']}/")
+        self.assertContains(share, 'Gillani Traders')
+
+    def test_logo_upload_and_remove(self):
+        company = Company.load()
+        res = self.client.post(self.url + f'{company.id}/logo/', {'logo': real_png()}, format='multipart')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertTrue(res.data['logo_url'].startswith('/media/companies/'))
+        inv = self.invoice()
+        self.assertEqual(inv['company_details']['logo'], res.data['logo_url'])
+        bad = SimpleUploadedFile('x.png', b'not an image', content_type='image/png')
+        self.assertEqual(self.client.post(self.url + f'{company.id}/logo/', {'logo': bad},
+                                          format='multipart').status_code, 400)
+        self.assertEqual(self.client.post(self.url + f'{company.id}/logo/', {},
+                                          format='multipart').status_code, 400)
+        res = self.client.delete(self.url + f'{company.id}/logo/')
+        self.assertEqual(res.data['logo_url'], '/static/img/logo.svg')  # back to site logo
+        # The invoice keeps the logo it was issued with.
+        self.assertTrue(Invoice.objects.get(pk=inv['id']).company_details['logo'].startswith('/media/'))
+
+    def test_legacy_company_profile_endpoint_edits_default(self):
+        res = self.client.put('/api/finance/company-profile/', {'bank_iban': 'PK36'}, format='json')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(Company.load().bank_iban, 'PK36')

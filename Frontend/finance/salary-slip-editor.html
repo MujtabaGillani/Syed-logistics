@@ -19,7 +19,6 @@
             </div>
             <div class="d-flex gap-2 flex-wrap">
                 <a href="/salary-slips/" class="btn btn-outline-secondary"><i class="fa fa-list me-2"></i>All Salary Slips</a>
-                <button type="button" class="btn btn-outline-secondary" id="btnCompany"><i class="fa fa-building me-2"></i>Company Details</button>
                 <a href="/salary-slips/new/" class="btn btn-primary"><i class="fa fa-plus me-2"></i>New Slip</a>
             </div>
         </div>
@@ -27,6 +26,7 @@
         <div class="row g-4">
             <div class="col-xl-6">
                 <form class="fin-card" id="slipForm" novalidate autocomplete="off">
+                    <div id="companyPanel"></div>
                     <div class="doc-form-section">
                         <h6><span><i class="fa fa-calendar-alt"></i>Slip &amp; pay period</span></h6>
                         <div class="row g-3">
@@ -242,7 +242,7 @@
     var slipId = {{ view.kwargs.pk|default:"null" }};
     var form = document.getElementById('slipForm');
     var preview = D.mountPreview(document.getElementById('docStage'));
-    var state = { company: {}, nextNumber: '', employees: [] };
+    var state = { nextNumber: '', employees: [] };
     var containers = {
         earning: document.getElementById('earningLines'),
         deduction: document.getElementById('deductionLines')
@@ -259,6 +259,12 @@
     function field(name) { return form.elements[name]; }
     function val(name) { return (field(name).value || '').trim(); }
     function setVal(name, v) { field(name).value = v == null ? '' : v; }
+
+    // Company / letterhead the slip is issued under.
+    var panel = D.companyPanel(document.getElementById('companyPanel'), {
+        showBank: false,
+        onChange: function () { refresh(); }
+    });
 
     // ---------------------------------------------------------------- lines
     function addLine(kind, line) {
@@ -327,6 +333,8 @@
         var d = {};
         FIELDS.forEach(function (n) { d[n] = val(n); });
         d.lines = readLines();
+        d.company = panel.companyId();
+        d.company_details = panel.details();
         return d;
     }
 
@@ -352,7 +360,7 @@
         Array.prototype.forEach.call(form.querySelectorAll('.js-bank'), function (el) {
             el.style.display = bank ? '' : 'none';
         });
-        preview.update(D.render('salary_slip', previewData(), state.company));
+        preview.update(D.render('salary_slip', previewData()));
     }
 
     var timer;
@@ -396,9 +404,6 @@
         refresh();
     });
 
-    document.getElementById('btnCompany').addEventListener('click', function () {
-        D.editCompany(function (c) { state.company = c; refresh(); });
-    });
 
     // ----------------------------------------------------------------- save
     function payload() {
@@ -411,6 +416,8 @@
             out[n] = v;
         });
         if (!out.slip_number) { delete out.slip_number; }
+        out.company = d.company;
+        out.company_details = d.company_details;
         out.lines = d.lines.map(function (l) {
             return { kind: l.kind, label: l.label || (l.kind === 'earning' ? 'Allowance' : 'Deduction'), amount: l.amount };
         });
@@ -419,6 +426,7 @@
 
     function validate() {
         var problems = [];
+        if (!panel.details().name) { problems.push('the company name (letterhead)'); }
         if (!val('employee_name')) { problems.push('employee name'); }
         if (!val('pay_period_start') || !val('pay_period_end')) { problems.push('the pay period dates'); }
         if (!(D.num(val('basic_salary')) > 0)) { problems.push('basic salary'); }
@@ -463,14 +471,14 @@
     document.getElementById('btnPdf').addEventListener('click', function () {
         var btn = this;
         btn.disabled = true;
-        D.downloadPdf('salary_slip', previewData(), state.company)
+        D.downloadPdf('salary_slip', previewData())
             .catch(function (err) { F.toast((err && err.message) || 'Could not create the PDF.', 'danger'); })
             .finally(function () { btn.disabled = false; });
     });
 
     document.getElementById('btnShare').addEventListener('click', function () {
         save().then(function (slip) {
-            D.openShare({ kind: 'salary_slip', data: slip, company: state.company, phone: slip.phone_number });
+            D.openShare({ kind: 'salary_slip', data: slip, phone: slip.phone_number });
         }).catch(function () {});
     });
 
@@ -480,13 +488,14 @@
         if (slip.pay_period_start) { document.getElementById('fMonth').value = slip.pay_period_start.slice(0, 7); }
         containers.earning.innerHTML = '';
         containers.deduction.innerHTML = '';
+        panel.load(slip.company, slip.company_details);
         (slip.lines || []).forEach(function (l) { addLine(l.kind, l); });
         applySaved(slip);
     }
 
     var params = new URLSearchParams(window.location.search);
     Promise.all([
-        D.loadCompany().then(function (c) { state.company = c; }).catch(function () {}),
+        panel.ready.catch(function () { F.toast('Could not load companies.', 'warning'); }),
         F.get('employees/').then(function (list) {
             state.employees = list || [];
             var sel = document.getElementById('fEmployee');

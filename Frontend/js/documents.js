@@ -149,12 +149,27 @@
         return esc(name.slice(0, i)) + ' <span>' + esc(name.slice(i + 1)) + '</span>';
     }
 
+    // Letterhead used for a document: its own saved snapshot, else the company
+    // passed in (e.g. the default company for older documents).
+    function resolveCompany(data, company) {
+        var snap = data && data.company_details;
+        return (snap && snap.name) ? snap : (company || {});
+    }
+
+    // Snapshots carry `logo` ('' = no logo); API company objects carry
+    // `logo_url`; anything older falls back to the website logo.
+    function companyLogo(co) {
+        if ('logo' in co) { return co.logo || ''; }
+        if ('logo_url' in co) { return co.logo_url || ''; }
+        return logoUrl;
+    }
+
     function letterhead(co, title, metaRows, stamp) {
         var contact = [co.phone, co.email].filter(Boolean).map(esc).join(' &nbsp;·&nbsp; ');
         var tax = [co.ntn ? 'NTN: ' + esc(co.ntn) : '', co.strn ? 'STRN: ' + esc(co.strn) : '']
             .filter(Boolean).join(' &nbsp;·&nbsp; ');
         return '<div class="doc-head">'
-            + '<div class="doc-brand"><img src="' + esc(logoUrl) + '" alt="">'
+            + '<div class="doc-brand">' + (companyLogo(co) ? '<img src="' + esc(companyLogo(co)) + '" alt="">' : '')
             + '<div><div class="doc-brand-name">' + brandName(co.name) + '</div>'
             + (co.tagline ? '<div class="doc-brand-tag">' + esc(co.tagline) + '</div>' : '')
             + '<div class="doc-brand-meta">'
@@ -395,8 +410,8 @@
     }
 
     function render(kind, data, company) {
-        company = company || {};
-        return kind === 'invoice' ? renderInvoice(data, company) : renderSlip(data, company);
+        var co = resolveCompany(data, company);
+        return kind === 'invoice' ? renderInvoice(data, co) : renderSlip(data, co);
     }
 
     // ------------------------------------------------------- preview scaling
@@ -487,7 +502,7 @@
     }
 
     function defaultMessage(kind, data, company) {
-        var co = (company && company.name) || 'Syed Logistic';
+        var co = resolveCompany(data, company).name || 'Syed Logistic';
         var link = shareLink(kind, data);
         var lines;
         if (kind === 'invoice') {
@@ -682,6 +697,259 @@
         };
     }
 
+    // -------------------------------------------------- company / letterhead
+    var DETAIL_FIELDS = [
+        ['name', 'Company name *', 'col-md-6'], ['tagline', 'Tagline', 'col-md-6'],
+        ['address', 'Address', 'col-12'],
+        ['phone', 'Phone', 'col-md-4'], ['email', 'Email', 'col-md-4'], ['website', 'Website', 'col-md-4'],
+        ['ntn', 'NTN', 'col-md-6'], ['strn', 'STRN', 'col-md-6']
+    ];
+    var BANK_FIELDS = [
+        ['bank_name', 'Bank name', 'col-md-6'], ['bank_account_title', 'Account title', 'col-md-6'],
+        ['bank_account_number', 'Account number', 'col-md-6'], ['bank_iban', 'IBAN', 'col-md-6']
+    ];
+    var ALL_DETAIL_KEYS = DETAIL_FIELDS.concat(BANK_FIELDS).map(function (f) { return f[0]; });
+
+    function snapshotOf(company) {
+        var d = {};
+        ALL_DETAIL_KEYS.forEach(function (k) { d[k] = (company && company[k]) || ''; });
+        d.logo = (company && company.logo_url) || '';
+        return d;
+    }
+
+    /* Company picker + editable letterhead for the invoice / salary-slip forms.
+     * opts: { showBank: bool, onChange(), onSwitch(prevCompany, nextCompany) }
+     * The edited details are saved on the document itself; "Save to company"
+     * also stores them on the company for future documents. */
+    function companyPanel(root, opts) {
+        opts = opts || {};
+        var companies = [];
+        var current = null;      // selected company object (null = new, unsaved)
+        var logo = '';
+        var fieldHtml = function (f) {
+            return '<div class="' + f[2] + '"><label class="form-label">' + esc(f[1]) + '</label>'
+                + '<input class="form-control" data-co="' + f[0] + '"></div>';
+        };
+        root.innerHTML = '<div class="doc-form-section doc-company">'
+            + '<h6><span><i class="fa fa-building"></i>Company / letterhead</span>'
+            + '<button type="button" class="btn btn-sm btn-outline-primary" data-act="new"><i class="fa fa-plus me-1"></i>New company</button></h6>'
+            + '<div class="row g-3 align-items-end">'
+            + '<div class="col-md-7"><label class="form-label">Issue as</label><select class="form-select" data-co-select></select></div>'
+            + '<div class="col-md-5 d-flex gap-2">'
+            + '<button type="button" class="btn btn-outline-primary flex-grow-1" data-act="save"><i class="fa fa-save me-1"></i>Save to company</button>'
+            + '<button type="button" class="btn btn-outline-secondary" data-act="default" title="Make this the default company"><i class="fa fa-star"></i></button>'
+            + '</div>'
+            + '<div class="col-12"><div class="doc-logo-row">'
+            + '<div class="doc-logo-box"><img data-co-logo alt="Logo"><span data-co-nologo>No logo</span></div>'
+            + '<div><div class="d-flex flex-wrap gap-2">'
+            + '<button type="button" class="btn btn-sm btn-outline-secondary" data-act="upload"><i class="fa fa-upload me-1"></i>Upload logo</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-danger" data-act="remove-logo"><i class="fa fa-times me-1"></i>Remove logo</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-secondary" data-act="toggle"><i class="fa fa-pen me-1"></i>Edit details</button>'
+            + '</div><div class="form-text">PNG, JPG or WebP up to 2 MB. An uploaded logo is saved to the company.</div></div>'
+            + '<input type="file" accept="image/png,image/jpeg,image/webp" data-co-file hidden>'
+            + '</div></div>'
+            + '<div class="col-12 doc-company-fields" data-co-fields hidden><div class="row g-3">'
+            + DETAIL_FIELDS.map(fieldHtml).join('')
+            + (opts.showBank
+                ? '<div class="col-12"><div class="doc-subhead">Bank details (printed as &ldquo;Pay to&rdquo;)</div></div>'
+                  + BANK_FIELDS.map(fieldHtml).join('')
+                : BANK_FIELDS.map(function (f) { return '<input type="hidden" data-co="' + f[0] + '">'; }).join(''))
+            + '</div></div>'
+            + '<div class="col-12"><div class="doc-company-status" data-co-status></div></div>'
+            + '</div></div>';
+
+        var q = function (sel) { return root.querySelector(sel); };
+        var select = q('[data-co-select]');
+        var fileInput = q('[data-co-file]');
+        var inputs = {};
+        Array.prototype.forEach.call(root.querySelectorAll('[data-co]'), function (el) {
+            inputs[el.getAttribute('data-co')] = el;
+        });
+
+        function changed() { status(); if (opts.onChange) { opts.onChange(); } }
+
+        function details() {
+            var d = {};
+            ALL_DETAIL_KEYS.forEach(function (k) { d[k] = inputs[k].value.trim(); });
+            d.logo = logo;
+            return d;
+        }
+
+        function isDirty() {
+            if (!current) { return true; }
+            var saved = snapshotOf(current), now = details();
+            return Object.keys(saved).some(function (k) { return (saved[k] || '') !== (now[k] || ''); });
+        }
+
+        function status() {
+            var el = q('[data-co-status]');
+            var name = inputs.name.value.trim() || 'Unnamed company';
+            q('[data-act="default"]').style.display = current && !current.is_default ? '' : 'none';
+            if (!current) {
+                el.innerHTML = '<i class="fa fa-info-circle me-1"></i>New company <b>' + esc(name)
+                    + '</b> - click <b>Save to company</b> to keep it for future documents.';
+            } else if (isDirty()) {
+                el.innerHTML = '<i class="fa fa-pen me-1"></i>Edited for this document only - click <b>Save to company</b> to update <b>'
+                    + esc(current.name) + '</b> for future documents too.';
+            } else {
+                el.innerHTML = '<i class="fa fa-check-circle text-success me-1"></i><b>' + esc(current.name) + '</b>'
+                    + (current.is_default ? ' (default company)' : '') + ' · ' + esc([current.phone, current.email].filter(Boolean).join(' · '));
+            }
+        }
+
+        function showLogo() {
+            var img = q('[data-co-logo]');
+            img.style.display = logo ? '' : 'none';
+            if (logo) { img.src = logo; }
+            q('[data-co-nologo]').style.display = logo ? 'none' : '';
+            q('[data-act="remove-logo"]').disabled = !logo;
+        }
+
+        function fill(d) {
+            ALL_DETAIL_KEYS.forEach(function (k) { inputs[k].value = d[k] || ''; });
+            logo = d.logo || '';
+            showLogo();
+        }
+
+        function renderOptions() {
+            select.innerHTML = companies.map(function (c) {
+                return '<option value="' + c.id + '">' + esc(c.name) + (c.is_default ? ' (default)' : '') + '</option>';
+            }).join('') + (current ? '' : '<option value="">New company (not saved yet)</option>');
+            select.value = current ? String(current.id) : '';
+        }
+
+        function byId(id) {
+            return companies.filter(function (c) { return String(c.id) === String(id); })[0] || null;
+        }
+
+        function upsert(c) {
+            var i = companies.map(function (x) { return x.id; }).indexOf(c.id);
+            if (i === -1) { companies.push(c); } else { companies[i] = c; }
+            if (c.is_default) {
+                companies.forEach(function (x) { if (x.id !== c.id) { x.is_default = false; } });
+            }
+            if (companyCache && companyCache.id === c.id) { companyCache = c; }
+        }
+
+        function select_(company, keepDetails) {
+            var prev = current;
+            current = company;
+            renderOptions();
+            if (!keepDetails) { fill(company ? snapshotOf(company) : {}); }
+            if (opts.onSwitch && prev !== company) { opts.onSwitch(prev, company); }
+            changed();
+        }
+
+        // Create (POST) or update (PUT) the selected company from the fields.
+        function saveCompany() {
+            var d = details();
+            if (!d.name) {
+                q('[data-co-fields]').hidden = false;
+                inputs.name.focus();
+                F.toast('Enter the company name first.', 'warning');
+                return Promise.reject(null);
+            }
+            var payload = {};
+            ALL_DETAIL_KEYS.forEach(function (k) { payload[k] = d[k]; });
+            payload.use_site_logo = !!logo && logo === logoUrl;
+            var op = current ? F.put('companies/' + current.id + '/', payload) : F.post('companies/', payload);
+            return op.then(function (c) {
+                // Logo removed on the form -> remove the uploaded one too.
+                if (!logo && current && current.logo_url && current.logo_url !== logoUrl) {
+                    return F.del('companies/' + c.id + '/logo/').then(function () { return F.get('companies/' + c.id + '/'); });
+                }
+                return c;
+            }).then(function (c) {
+                upsert(c);
+                current = c;
+                renderOptions();
+                changed();
+                return c;
+            }).catch(function (err) {
+                if (err) { F.toast(errorText(err), 'danger'); }
+                throw null;
+            });
+        }
+
+        select.addEventListener('change', function () {
+            if (select.value) { select_(byId(select.value)); }
+        });
+        root.addEventListener('input', function (ev) {
+            if (ev.target.hasAttribute('data-co')) { status(); }
+        });
+        root.addEventListener('click', function (ev) {
+            var btn = ev.target.closest('[data-act]');
+            if (!btn) { return; }
+            var act = btn.getAttribute('data-act');
+            if (act === 'toggle') {
+                var box = q('[data-co-fields]');
+                box.hidden = !box.hidden;
+                btn.innerHTML = box.hidden ? '<i class="fa fa-pen me-1"></i>Edit details' : '<i class="fa fa-chevron-up me-1"></i>Hide details';
+            } else if (act === 'new') {
+                select_(null);
+                q('[data-co-fields]').hidden = false;
+                q('[data-act="toggle"]').innerHTML = '<i class="fa fa-chevron-up me-1"></i>Hide details';
+                inputs.name.focus();
+            } else if (act === 'save') {
+                btn.disabled = true;
+                saveCompany().then(function (c) { F.toast('Company "' + c.name + '" saved.'); })
+                    .catch(function () {}).finally(function () { btn.disabled = false; });
+            } else if (act === 'default' && current) {
+                F.post('companies/' + current.id + '/make_default/', {}).then(function (c) {
+                    upsert(c);
+                    current = c;
+                    renderOptions();
+                    changed();
+                    F.toast(c.name + ' is now the default company.');
+                }).catch(function (err) { F.toast(errorText(err), 'danger'); });
+            } else if (act === 'upload') {
+                fileInput.click();
+            } else if (act === 'remove-logo') {
+                logo = '';
+                showLogo();
+                changed();
+            }
+        });
+        fileInput.addEventListener('change', function () {
+            var file = fileInput.files[0];
+            fileInput.value = '';
+            if (!file) { return; }
+            if (file.size > 2 * 1024 * 1024) { F.toast('Logo must be 2 MB or smaller.', 'warning'); return; }
+            var saved = current && !isDirty() ? Promise.resolve(current) : saveCompany();
+            saved.then(function (c) {
+                var fd = new FormData();
+                fd.append('logo', file);
+                return F.postForm('companies/' + c.id + '/logo/', fd);
+            }).then(function (c) {
+                upsert(c);
+                current = c;
+                logo = c.logo_url;
+                showLogo();
+                changed();
+                F.toast('Logo uploaded.');
+            }).catch(function (err) { if (err) { F.toast(errorText(err), 'danger'); } });
+        });
+
+        var ready = F.get('companies/').then(function (list) {
+            companies = list || [];
+            select_(companies.filter(function (c) { return c.is_default; })[0] || companies[0] || null);
+        });
+
+        return {
+            ready: ready,
+            details: details,
+            companyId: function () { return current ? current.id : null; },
+            company: function () { return current; },
+            // Show a saved document's own letterhead (and its company, if it still exists).
+            load: function (companyId, snap) {
+                current = byId(companyId);
+                renderOptions();
+                if (snap && snap.name) { fill(snap); } else { fill(current ? snapshotOf(current) : {}); }
+                changed();
+            }
+        };
+    }
+
     // DRF errors can be nested (e.g. items[2].rate) - flatten to one line.
     function errorText(err) {
         var data = err && err.data;
@@ -728,6 +996,7 @@
         shareLink: shareLink,
         openShare: openShare,
         loadCompany: loadCompany,
+        companyPanel: companyPanel,
         editCompany: editCompany
     };
 })(window, document);

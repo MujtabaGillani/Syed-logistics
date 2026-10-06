@@ -142,10 +142,13 @@ class SalarySlipEditorView(SecureDashboardView):
 def _shared_document(request, kind, data):
     from finance.models import CompanyProfile
     from finance.serializers import CompanyProfileSerializer
+    # Print the letterhead the document was issued with (its snapshot).
+    company = data.get('company_details') or \
+        CompanyProfileSerializer(CompanyProfile.load()).data
     return render(request, 'finance/share-document.html', {
         'kind': kind,
         'doc': data,
-        'company': CompanyProfileSerializer(CompanyProfile.load()).data,
+        'company': company,
     })
 
 

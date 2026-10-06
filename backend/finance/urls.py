@@ -13,6 +13,7 @@ from .views import (
     InvoiceViewSet,
     SalarySlipViewSet,
     CompanyProfileView,
+    CompanyViewSet,
     DashboardSummaryView,
 )
 
@@ -27,6 +28,7 @@ router.register(r'shipments', ShipmentViewSet, basename='shipment')
 router.register(r'employees', EmployeeViewSet, basename='employee')
 router.register(r'invoices', InvoiceViewSet, basename='invoice')
 router.register(r'salary-slips', SalarySlipViewSet, basename='salaryslip')
+router.register(r'companies', CompanyViewSet, basename='company')
 
 urlpatterns = [
     path('dashboard-summary/', DashboardSummaryView.as_view(),

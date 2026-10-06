@@ -11,6 +11,7 @@ import uuid
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
+from django.conf import settings
 from django.db import models
 
 
@@ -528,11 +529,27 @@ def next_document_number(model, field, prefix):
     return f'{prefix}{last + 1:04d}'
 
 
+SITE_LOGO = 'img/logo.svg'  # bundled website logo (Frontend/img/logo.svg)
+
+COMPANY_DETAIL_FIELDS = (
+    'name', 'tagline', 'address', 'phone', 'email', 'website', 'ntn', 'strn',
+    'bank_name', 'bank_account_title', 'bank_account_number', 'bank_iban',
+)
+
+
 class CompanyProfile(models.Model):
-    """Singleton holding the letterhead / bank details printed on invoices and
-    salary slips. Always accessed via ``CompanyProfile.load()``."""
+    """A company / letterhead (name, logo, contacts, bank details) printed on
+    invoices and salary slips. Several can exist (e.g. sister companies or
+    branches); one is the default. Each document stores a snapshot of the
+    details it was issued with (``company_details``), so editing a company
+    later never alters documents already sent."""
 
     name = models.CharField(max_length=255, default='Syed Logistic')
+    logo = models.ImageField(upload_to='companies/', blank=True, null=True)
+    use_site_logo = models.BooleanField(
+        default=False,
+        help_text='Print the website logo when no logo has been uploaded.')
+    is_default = models.BooleanField(default=False)
     tagline = models.CharField(
         max_length=255, blank=True, default='Freight & Supply Chain Solutions')
     address = models.CharField(
@@ -561,20 +578,44 @@ class CompanyProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = 'Company profile'
-        verbose_name_plural = 'Company profile'
+        ordering = ['-is_default', 'name']
+        verbose_name = 'Company'
+        verbose_name_plural = 'Companies'
 
     def __str__(self):
         return self.name
 
     def save(self, *args, **kwargs):
-        self.pk = 1  # enforce a single row
+        # The first company is always the default; only one default at a time.
+        if not self.is_default and not CompanyProfile.objects.exclude(
+                pk=self.pk).filter(is_default=True).exists():
+            self.is_default = True
         super().save(*args, **kwargs)
+        if self.is_default:
+            CompanyProfile.objects.exclude(pk=self.pk).filter(
+                is_default=True).update(is_default=False)
 
     @classmethod
     def load(cls):
-        obj, _ = cls.objects.get_or_create(pk=1)
+        """The default company (created with Syed Logistic details if none)."""
+        obj = cls.objects.filter(is_default=True).first() or cls.objects.first()
+        if obj is None:
+            obj = cls.objects.create(is_default=True, use_site_logo=True)
         return obj
+
+    @property
+    def logo_url(self):
+        if self.logo:
+            return self.logo.url
+        if self.use_site_logo:
+            return settings.STATIC_URL + SITE_LOGO
+        return ''
+
+    def snapshot(self):
+        """The details printed on a document (stored on the document)."""
+        data = {f: getattr(self, f) or '' for f in COMPANY_DETAIL_FIELDS}
+        data['logo'] = self.logo_url
+        return data
 
 
 DOC_PAYMENT_CASH = 'cash'
@@ -641,6 +682,12 @@ class Invoice(models.Model):
     due_date = models.DateField(blank=True, null=True)
     reference_number = models.CharField(
         max_length=100, blank=True, help_text='PO / order / booking reference.')
+
+    # Issuing company + the letterhead snapshot printed on this invoice.
+    company = models.ForeignKey(
+        CompanyProfile, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='invoices')
+    company_details = models.JSONField(default=dict, blank=True)
 
     # Customer (optional link + the snapshot printed on the invoice).
     customer = models.ForeignKey(
@@ -816,6 +863,12 @@ class SalarySlip(models.Model):
         help_text='Auto-generated (e.g. SAL-2026-0001) if left blank.')
     share_token = models.UUIDField(default=uuid.uuid4, unique=True,
                                    editable=False)
+
+    # Paying company + the letterhead snapshot printed on this slip.
+    company = models.ForeignKey(
+        CompanyProfile, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='salary_slips')
+    company_details = models.JSONField(default=dict, blank=True)
 
     employee = models.ForeignKey(
         Employee, on_delete=models.SET_NULL, null=True, blank=True,

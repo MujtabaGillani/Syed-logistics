@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import transaction
 from rest_framework import serializers
 
@@ -8,7 +9,7 @@ from .models import (
     Item, SaleOrder, SaleOrderItem,
     Shipment, ShipmentItem, ShipmentImage, Employee,
     CompanyProfile, Invoice, InvoiceItem, SalarySlip, SalarySlipLine,
-    compute_invoice_totals, compute_salary_totals, _q,
+    compute_invoice_totals, compute_salary_totals, _q, COMPANY_DETAIL_FIELDS,
 )
 
 
@@ -364,11 +365,71 @@ class OfficeExpenseSerializer(serializers.ModelSerializer):
 # --------------------------------------------------------------------------
 # Printable documents: company profile, invoices, salary slips
 # --------------------------------------------------------------------------
+MAX_LOGO_BYTES = 2 * 1024 * 1024
+
+
 class CompanyProfileSerializer(serializers.ModelSerializer):
+    logo_url = serializers.CharField(read_only=True)
+
     class Meta:
         model = CompanyProfile
-        exclude = ['id']
-        read_only_fields = ['updated_at']
+        fields = ['id', *COMPANY_DETAIL_FIELDS, 'logo', 'logo_url',
+                  'use_site_logo', 'is_default', 'invoice_terms',
+                  'invoice_notes', 'updated_at']
+        read_only_fields = ['id', 'is_default', 'updated_at']
+        extra_kwargs = {'logo': {'write_only': True, 'required': False}}
+
+    def validate_name(self, value):
+        if not (value or '').strip():
+            raise serializers.ValidationError('Company name is required.')
+        return value.strip()
+
+    def validate_logo(self, value):
+        if value and value.size > MAX_LOGO_BYTES:
+            raise serializers.ValidationError('Logo must be 2 MB or smaller.')
+        return value
+
+
+def apply_company(attrs, instance):
+    """Resolve the issuing company and the letterhead snapshot for an invoice /
+    salary slip. Details sent by the form win (they may be edited for this one
+    document); otherwise the selected company's details (or the default
+    company's) are copied in."""
+    company_given = 'company' in attrs
+    company = attrs.get('company') if company_given else \
+        getattr(instance, 'company', None)
+    if company is None and (instance is None or company_given):
+        company = CompanyProfile.load()
+    attrs['company'] = company
+
+    details = attrs.get('company_details')
+    if details is None and instance is not None and not company_given:
+        return attrs  # nothing about the letterhead changed
+    if not details:
+        attrs['company_details'] = company.snapshot() if company else {}
+        return attrs
+    if not isinstance(details, dict):
+        raise serializers.ValidationError(
+            {'company_details': 'Must be an object.'})
+    clean = {}
+    for key in (*COMPANY_DETAIL_FIELDS, 'logo'):
+        value = details.get(key, '')
+        if value is None:
+            value = ''
+        if not isinstance(value, str) or len(value) > 500:
+            raise serializers.ValidationError(
+                {'company_details': f'Invalid value for {key}.'})
+        clean[key] = value.strip()
+    if not clean['name']:
+        raise serializers.ValidationError(
+            {'company_details': 'Company name is required.'})
+    # Only our own uploaded / bundled images may be printed as the logo.
+    if clean['logo'] and not clean['logo'].startswith(
+            (settings.MEDIA_URL, settings.STATIC_URL)):
+        raise serializers.ValidationError(
+            {'company_details': 'Logo must be an uploaded company logo.'})
+    attrs['company_details'] = clean
+    return attrs
 
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
@@ -410,6 +471,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         model = Invoice
         fields = [
             'id', 'invoice_number', 'share_token', 'invoice_date', 'due_date',
+            'company', 'company_details',
             'reference_number',
             'customer', 'bill_to_name', 'bill_to_company', 'bill_to_phone',
             'bill_to_email', 'bill_to_cnic', 'bill_to_address',
@@ -468,7 +530,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'Advance + amount received is more than the invoice total.')
         attrs.update(totals)
-        return attrs
+        return apply_company(attrs, inst)
 
     def _write_items(self, invoice, items):
         invoice.items.all().delete()
@@ -520,7 +582,8 @@ class SalarySlipSerializer(serializers.ModelSerializer):
     class Meta:
         model = SalarySlip
         fields = [
-            'id', 'slip_number', 'share_token', 'employee',
+            'id', 'slip_number', 'share_token', 'company', 'company_details',
+            'employee',
             'employee_name', 'employee_code', 'designation', 'department',
             'cnic', 'phone_number', 'email', 'address', 'joining_date',
             'pay_period_start', 'pay_period_end', 'pay_date',
@@ -572,7 +635,7 @@ class SalarySlipSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'Deductions are more than the gross salary.')
         attrs.update(totals)
-        return attrs
+        return apply_company(attrs, inst)
 
     @transaction.atomic
     def create(self, validated_data):

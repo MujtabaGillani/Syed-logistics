@@ -155,8 +155,9 @@ class SalarySlipAdmin(admin.ModelAdmin):
 
 @admin.register(CompanyProfile)
 class CompanyProfileAdmin(admin.ModelAdmin):
-    def has_add_permission(self, request):
-        return not CompanyProfile.objects.exists()
+    list_display = ('name', 'phone', 'email', 'is_default')
+    search_fields = ('name',)
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        # The default company must stay (documents fall back to it).
+        return obj is None or not obj.is_default
