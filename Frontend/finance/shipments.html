@@ -386,7 +386,7 @@
         else if (opt) {
             e.preventDefault();
             F.get('items/' + opt.getAttribute('data-id') + '/').then(function (it) {
-                lines.push({ item: it.id, sku: it.sku, name: it.name, weight_kg: it.weight_kg, quantity: 1 });
+                lines.push({ item: it.id, sku: it.sku, name: it.name, weight_kg: it.weight_kg, quantity: it.quantity || 1 });
                 renderLines();
             });
             searchBox.value = ''; hideResults();
@@ -414,7 +414,7 @@
         btn.disabled = true;
         F.post('items/', payload).then(function (it) {
             newItemModal.hide();
-            lines.push({ item: it.id, sku: it.sku, name: it.name, weight_kg: it.weight_kg, quantity: 1 });
+            lines.push({ item: it.id, sku: it.sku, name: it.name, weight_kg: it.weight_kg, quantity: it.quantity || 1 });
             renderLines();
             F.toast('Item added.');
         }).catch(function (err) { F.toast(F.errorText(err), 'danger'); })

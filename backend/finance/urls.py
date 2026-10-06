@@ -10,6 +10,9 @@ from .views import (
     SaleOrderViewSet,
     ShipmentViewSet,
     EmployeeViewSet,
+    InvoiceViewSet,
+    SalarySlipViewSet,
+    CompanyProfileView,
     DashboardSummaryView,
 )
 
@@ -22,9 +25,13 @@ router.register(r'items', ItemViewSet, basename='item')
 router.register(r'sale-orders', SaleOrderViewSet, basename='saleorder')
 router.register(r'shipments', ShipmentViewSet, basename='shipment')
 router.register(r'employees', EmployeeViewSet, basename='employee')
+router.register(r'invoices', InvoiceViewSet, basename='invoice')
+router.register(r'salary-slips', SalarySlipViewSet, basename='salaryslip')
 
 urlpatterns = [
     path('dashboard-summary/', DashboardSummaryView.as_view(),
          name='dashboard-summary'),
+    path('company-profile/', CompanyProfileView.as_view(),
+         name='company-profile'),
     path('', include(router.urls)),
 ]

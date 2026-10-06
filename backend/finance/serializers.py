@@ -1,11 +1,14 @@
 from decimal import Decimal
 
+from django.db import transaction
 from rest_framework import serializers
 
 from .models import (
     Customer, GeneralVoucher, OfficeExpense, Payment,
     Item, SaleOrder, SaleOrderItem,
     Shipment, ShipmentItem, ShipmentImage, Employee,
+    CompanyProfile, Invoice, InvoiceItem, SalarySlip, SalarySlipLine,
+    compute_invoice_totals, compute_salary_totals, _q,
 )
 
 
@@ -14,7 +17,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
         model = Employee
         fields = [
             'id', 'name', 'phone_number', 'cnic', 'designation', 'salary',
-            'email', 'address', 'is_active', 'created_at', 'updated_at',
+            'email', 'address', 'employee_code', 'department',
+            'joining_date', 'bank_name', 'bank_account_title',
+            'bank_account_number', 'is_active', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -183,7 +188,7 @@ class ItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = Item
         fields = ['id', 'sku', 'name', 'label', 'weight_kg', 'amount',
-                  'is_active', 'created_at', 'updated_at']
+                  'quantity', 'is_active', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def get_label(self, obj):
@@ -354,3 +359,237 @@ class OfficeExpenseSerializer(serializers.ModelSerializer):
         if value is None or value < 0:
             raise serializers.ValidationError('Amount cannot be negative.')
         return value
+
+
+# --------------------------------------------------------------------------
+# Printable documents: company profile, invoices, salary slips
+# --------------------------------------------------------------------------
+class CompanyProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanyProfile
+        exclude = ['id']
+        read_only_fields = ['updated_at']
+
+
+class InvoiceItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvoiceItem
+        fields = ['id', 'item', 'description', 'unit', 'weight_kg',
+                  'quantity', 'rate', 'amount']
+        read_only_fields = ['id', 'amount']
+
+    def validate(self, attrs):
+        if (attrs.get('quantity') or 0) < 0 or (attrs.get('rate') or 0) < 0:
+            raise serializers.ValidationError(
+                'Quantity and rate cannot be negative.')
+        return attrs
+
+
+NON_NEGATIVE_INVOICE_FIELDS = ('discount', 'other_charges', 'tax_percent',
+                               'advance_amount', 'amount_received')
+
+
+class InvoiceSerializer(serializers.ModelSerializer):
+    """Create / edit an invoice with its lines in one request. Totals, tax and
+    balance are always recomputed server-side from the lines."""
+
+    items = InvoiceItemSerializer(many=True)
+    transport_mode_display = serializers.CharField(
+        source='get_transport_mode_display', read_only=True)
+    payment_method_display = serializers.CharField(
+        source='get_payment_method_display', read_only=True)
+    amount_paid = serializers.DecimalField(
+        max_digits=16, decimal_places=2, read_only=True)
+    payment_status = serializers.CharField(read_only=True)
+    shipment_code = serializers.CharField(
+        source='shipment.shipment_id', read_only=True, default=None)
+    sale_order_invoice = serializers.CharField(
+        source='sale_order.invoice_number', read_only=True, default=None)
+
+    class Meta:
+        model = Invoice
+        fields = [
+            'id', 'invoice_number', 'share_token', 'invoice_date', 'due_date',
+            'reference_number',
+            'customer', 'bill_to_name', 'bill_to_company', 'bill_to_phone',
+            'bill_to_email', 'bill_to_cnic', 'bill_to_address',
+            'ship_to_name', 'ship_to_phone', 'ship_to_address',
+            'shipment', 'shipment_code', 'sale_order', 'sale_order_invoice',
+            'tracking_number', 'transport_mode', 'transport_mode_display',
+            'service_type', 'origin', 'destination', 'vehicle_number',
+            'packages', 'total_weight_kg', 'volume_cbm', 'pickup_date',
+            'delivery_date',
+            'items', 'subtotal', 'discount', 'other_charges_label',
+            'other_charges', 'tax_percent', 'tax_amount', 'total_amount',
+            'advance_amount', 'advance_date', 'amount_received',
+            'received_date', 'amount_paid', 'balance_due', 'balance_due_date',
+            'payment_status', 'payment_method', 'payment_method_display',
+            'payment_bank_name', 'payment_account_title',
+            'payment_account_number', 'transaction_reference',
+            'notes', 'terms', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'share_token', 'subtotal', 'tax_amount',
+                            'total_amount', 'balance_due',
+                            'created_at', 'updated_at']
+        extra_kwargs = {'invoice_number': {'required': False}}
+
+    def validate_items(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                'An invoice must have at least one line item.')
+        return value
+
+    def validate(self, attrs):
+        for field in NON_NEGATIVE_INVOICE_FIELDS:
+            if attrs.get(field) is not None and attrs[field] < 0:
+                raise serializers.ValidationError(
+                    {field: 'Cannot be negative.'})
+
+        inst = self.instance
+
+        def get(field):
+            return attrs[field] if field in attrs else getattr(inst, field, None)
+
+        if get('advance_amount') and not get('advance_date'):
+            raise serializers.ValidationError(
+                {'advance_date': 'Enter the date the advance was paid.'})
+
+        items = attrs.get('items')
+        lines = ([(i.get('quantity'), i.get('rate')) for i in items]
+                 if items is not None else
+                 [(i.quantity, i.rate) for i in inst.items.all()])
+        totals = compute_invoice_totals(
+            lines, get('discount'), get('tax_percent'), get('other_charges'),
+            get('advance_amount'), get('amount_received'))
+        if totals['total_amount'] < 0:
+            raise serializers.ValidationError(
+                'Discount cannot be more than the invoice amount.')
+        if totals['balance_due'] < 0:
+            raise serializers.ValidationError(
+                'Advance + amount received is more than the invoice total.')
+        attrs.update(totals)
+        return attrs
+
+    def _write_items(self, invoice, items):
+        invoice.items.all().delete()
+        for line in items:
+            line['amount'] = _q(Decimal(line.get('quantity') or 0)
+                                * Decimal(line.get('rate') or 0))
+            InvoiceItem.objects.create(invoice=invoice, **line)
+
+    @transaction.atomic
+    def create(self, validated_data):
+        items = validated_data.pop('items')
+        invoice = Invoice.objects.create(**validated_data)
+        self._write_items(invoice, items)
+        return invoice
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        items = validated_data.pop('items', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if items is not None:
+            self._write_items(instance, items)
+        return instance
+
+
+class SalarySlipLineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalarySlipLine
+        fields = ['id', 'kind', 'label', 'amount']
+        read_only_fields = ['id']
+
+    def validate_amount(self, value):
+        if value is None or value < 0:
+            raise serializers.ValidationError('Amount cannot be negative.')
+        return value
+
+
+class SalarySlipSerializer(serializers.ModelSerializer):
+    """Create / edit a salary slip with its earning & deduction lines. Gross,
+    tax, deductions and net pay are recomputed server-side."""
+
+    lines = SalarySlipLineSerializer(many=True, required=False)
+    payment_method_display = serializers.CharField(
+        source='get_payment_method_display', read_only=True)
+    payment_status_display = serializers.CharField(
+        source='get_payment_status_display', read_only=True)
+
+    class Meta:
+        model = SalarySlip
+        fields = [
+            'id', 'slip_number', 'share_token', 'employee',
+            'employee_name', 'employee_code', 'designation', 'department',
+            'cnic', 'phone_number', 'email', 'address', 'joining_date',
+            'pay_period_start', 'pay_period_end', 'pay_date',
+            'working_days', 'days_present', 'leaves',
+            'basic_salary', 'lines', 'tax_percent', 'tax_amount',
+            'gross_earnings', 'total_deductions', 'net_pay',
+            'payment_status', 'payment_status_display',
+            'payment_method', 'payment_method_display',
+            'bank_name', 'bank_account_title', 'bank_account_number',
+            'transaction_id', 'notes', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'share_token', 'gross_earnings',
+                            'total_deductions', 'net_pay',
+                            'created_at', 'updated_at']
+        extra_kwargs = {'slip_number': {'required': False}}
+
+    def validate(self, attrs):
+        inst = self.instance
+
+        def get(field):
+            return attrs[field] if field in attrs else getattr(inst, field, None)
+
+        for field in ('basic_salary', 'tax_percent', 'tax_amount',
+                      'working_days', 'days_present', 'leaves'):
+            if attrs.get(field) is not None and attrs[field] < 0:
+                raise serializers.ValidationError(
+                    {field: 'Cannot be negative.'})
+        if (get('tax_percent') or 0) > 100:
+            raise serializers.ValidationError(
+                {'tax_percent': 'Tax % cannot exceed 100.'})
+
+        start, end = get('pay_period_start'), get('pay_period_end')
+        if start and end and end < start:
+            raise serializers.ValidationError(
+                {'pay_period_end': 'Period end must be on or after the start.'})
+
+        lines = attrs.get('lines')
+        if lines is None:
+            lines = ([{'kind': ln.kind, 'amount': ln.amount}
+                      for ln in inst.lines.all()] if inst else [])
+        earnings = [ln['amount'] for ln in lines
+                    if ln['kind'] == SalarySlipLine.KIND_EARNING]
+        deductions = [ln['amount'] for ln in lines
+                      if ln['kind'] == SalarySlipLine.KIND_DEDUCTION]
+        totals = compute_salary_totals(
+            get('basic_salary'), earnings, deductions,
+            get('tax_percent'), get('tax_amount'))
+        if totals['net_pay'] < 0:
+            raise serializers.ValidationError(
+                'Deductions are more than the gross salary.')
+        attrs.update(totals)
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        lines = validated_data.pop('lines', [])
+        slip = SalarySlip.objects.create(**validated_data)
+        for line in lines:
+            SalarySlipLine.objects.create(slip=slip, **line)
+        return slip
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        lines = validated_data.pop('lines', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if lines is not None:
+            instance.lines.all().delete()
+            for line in lines:
+                SalarySlipLine.objects.create(slip=instance, **line)
+        return instance

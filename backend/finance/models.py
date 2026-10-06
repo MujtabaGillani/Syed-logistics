@@ -7,7 +7,9 @@ API, which keeps an auditable trail of every invoice raised.
 """
 import random
 import string
-from decimal import Decimal
+import uuid
+from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.db import models
 
@@ -276,6 +278,10 @@ class Item(models.Model):
     amount = models.DecimalField(
         max_digits=14, decimal_places=2, default=Decimal('0.00'),
         help_text='Default charge / unit price.')
+    quantity = models.PositiveIntegerField(
+        default=1,
+        help_text='Default quantity used when the item is added to a '
+                  'shipment or invoice line.')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -390,6 +396,14 @@ class Employee(models.Model):
         max_digits=14, decimal_places=2, default=Decimal('0.00'))
     email = models.EmailField(blank=True, null=True)
     address = models.CharField(max_length=500, blank=True)
+    # Optional HR / payroll details - used to pre-fill salary slips.
+    employee_code = models.CharField(max_length=50, blank=True)
+    department = models.CharField(max_length=150, blank=True)
+    joining_date = models.DateField(blank=True, null=True)
+    bank_name = models.CharField(max_length=150, blank=True)
+    bank_account_title = models.CharField(max_length=150, blank=True)
+    bank_account_number = models.CharField(
+        max_length=60, blank=True, help_text='Account number or IBAN.')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -483,3 +497,411 @@ class ShipmentImage(models.Model):
 
     def __str__(self):
         return f'Image #{self.pk}'
+
+
+# --------------------------------------------------------------------------
+# Printable documents: company profile, customer invoices and salary slips.
+#
+# These are standalone documents (generate -> preview -> PDF / WhatsApp). They
+# do NOT post to the customer ledger or the P&L, so the existing voucher /
+# sale-order / expense figures on the dashboard are unaffected.
+# --------------------------------------------------------------------------
+TWO_PLACES = Decimal('0.01')
+
+
+def _q(value):
+    """Round to 2 decimal places (half-up, like a calculator)."""
+    return Decimal(value or 0).quantize(TWO_PLACES, rounding=ROUND_HALF_UP)
+
+
+def next_document_number(model, field, prefix):
+    """Next sequential number for ``prefix`` (e.g. ``INV-2026-0007``).
+
+    Looks at the highest existing number with the same prefix, so manually
+    entered numbers in another format never break the sequence."""
+    last = 0
+    for value in model.objects.filter(
+            **{f'{field}__startswith': prefix}).values_list(field, flat=True):
+        tail = value[len(prefix):]
+        if tail.isdigit():
+            last = max(last, int(tail))
+    return f'{prefix}{last + 1:04d}'
+
+
+class CompanyProfile(models.Model):
+    """Singleton holding the letterhead / bank details printed on invoices and
+    salary slips. Always accessed via ``CompanyProfile.load()``."""
+
+    name = models.CharField(max_length=255, default='Syed Logistic')
+    tagline = models.CharField(
+        max_length=255, blank=True, default='Freight & Supply Chain Solutions')
+    address = models.CharField(
+        max_length=500, blank=True,
+        default='Ohad Center LG B-1 30 Mall Road Lahore, Punjab, Pakistan')
+    phone = models.CharField(max_length=60, blank=True,
+                             default='+92 329 875 6059')
+    email = models.CharField(max_length=120, blank=True,
+                             default='Info@syedlogistic.com')
+    website = models.CharField(max_length=120, blank=True,
+                               default='www.syedlogistic.com')
+    ntn = models.CharField('NTN', max_length=60, blank=True)
+    strn = models.CharField('STRN', max_length=60, blank=True)
+    bank_name = models.CharField(max_length=150, blank=True)
+    bank_account_title = models.CharField(max_length=150, blank=True)
+    bank_account_number = models.CharField(max_length=60, blank=True)
+    bank_iban = models.CharField('IBAN', max_length=60, blank=True)
+    invoice_terms = models.TextField(
+        blank=True,
+        default=('1. Payment is due by the agreed date mentioned on this '
+                 'invoice.\n'
+                 "2. Goods are carried at owner's risk unless insured.\n"
+                 '3. Claims must be reported within 7 days of delivery.'))
+    invoice_notes = models.TextField(
+        blank=True, default='Thank you for choosing Syed Logistic.')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Company profile'
+        verbose_name_plural = 'Company profile'
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        self.pk = 1  # enforce a single row
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+DOC_PAYMENT_CASH = 'cash'
+DOC_PAYMENT_BANK = 'bank'
+DOC_PAYMENT_CHEQUE = 'cheque'
+DOC_PAYMENT_ONLINE = 'online'
+DOC_PAYMENT_CHOICES = [
+    (DOC_PAYMENT_CASH, 'Cash'),
+    (DOC_PAYMENT_BANK, 'Bank Transfer'),
+    (DOC_PAYMENT_CHEQUE, 'Cheque'),
+    (DOC_PAYMENT_ONLINE, 'Online (JazzCash / Easypaisa)'),
+]
+
+
+def compute_invoice_totals(lines, discount=0, tax_percent=0, other_charges=0,
+                           advance_amount=0, amount_received=0):
+    """Pure calculation used by the serializer (mirrored by the JS preview).
+    ``lines`` is an iterable of ``(quantity, rate)``.
+
+        subtotal = sum(round(qty * rate))
+        taxable  = subtotal - discount + other_charges
+        tax      = taxable * tax% / 100
+        total    = taxable + tax
+        balance  = total - advance - received
+    """
+    subtotal = _q(sum((_q(Decimal(qty or 0) * Decimal(rate or 0))
+                       for qty, rate in lines), Decimal('0')))
+    taxable = subtotal - _q(discount) + _q(other_charges)
+    tax_amount = _q(taxable * Decimal(tax_percent or 0) / Decimal('100'))
+    total = _q(taxable + tax_amount)
+    balance = _q(total - _q(advance_amount) - _q(amount_received))
+    return {
+        'subtotal': subtotal,
+        'tax_amount': tax_amount,
+        'total_amount': total,
+        'balance_due': balance,
+    }
+
+
+class Invoice(models.Model):
+    """A customer-facing logistics invoice built in the Invoice workspace."""
+
+    MODE_ROAD = 'road'
+    MODE_AIR = 'air'
+    MODE_SEA = 'sea'
+    MODE_RAIL = 'rail'
+    MODE_COURIER = 'courier'
+    MODE_OTHER = 'other'
+    MODE_CHOICES = [
+        (MODE_ROAD, 'Road Freight'),
+        (MODE_AIR, 'Air Freight'),
+        (MODE_SEA, 'Sea Freight'),
+        (MODE_RAIL, 'Rail Freight'),
+        (MODE_COURIER, 'Courier'),
+        (MODE_OTHER, 'Other'),
+    ]
+
+    invoice_number = models.CharField(
+        max_length=60, unique=True, blank=True,
+        help_text='Auto-generated (e.g. INV-2026-0001) if left blank.')
+    share_token = models.UUIDField(default=uuid.uuid4, unique=True,
+                                   editable=False)
+    invoice_date = models.DateField()
+    due_date = models.DateField(blank=True, null=True)
+    reference_number = models.CharField(
+        max_length=100, blank=True, help_text='PO / order / booking reference.')
+
+    # Customer (optional link + the snapshot printed on the invoice).
+    customer = models.ForeignKey(
+        Customer, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='invoices')
+    bill_to_name = models.CharField(max_length=255)
+    bill_to_company = models.CharField(max_length=255, blank=True)
+    bill_to_phone = models.CharField(max_length=60, blank=True)
+    bill_to_email = models.CharField(max_length=120, blank=True)
+    bill_to_cnic = models.CharField('Bill-to CNIC / NTN', max_length=60,
+                                    blank=True)
+    bill_to_address = models.TextField(blank=True)
+    ship_to_name = models.CharField(max_length=255, blank=True)
+    ship_to_phone = models.CharField(max_length=60, blank=True)
+    ship_to_address = models.TextField(blank=True)
+
+    # Shipment / consignment details.
+    shipment = models.ForeignKey(
+        'Shipment', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='invoices')
+    sale_order = models.ForeignKey(
+        SaleOrder, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='printed_invoices')
+    tracking_number = models.CharField(
+        max_length=100, blank=True, help_text='Bilty / AWB / B/L / CN number.')
+    transport_mode = models.CharField(max_length=20, choices=MODE_CHOICES,
+                                      blank=True)
+    service_type = models.CharField(
+        max_length=120, blank=True, help_text='e.g. Door to door, FCL, LCL.')
+    origin = models.CharField(max_length=150, blank=True)
+    destination = models.CharField(max_length=150, blank=True)
+    vehicle_number = models.CharField(
+        max_length=100, blank=True, help_text='Vehicle / container number.')
+    packages = models.PositiveIntegerField(blank=True, null=True)
+    total_weight_kg = models.DecimalField(
+        max_digits=12, decimal_places=3, blank=True, null=True)
+    volume_cbm = models.DecimalField(
+        max_digits=12, decimal_places=3, blank=True, null=True)
+    pickup_date = models.DateField(blank=True, null=True)
+    delivery_date = models.DateField(blank=True, null=True)
+
+    # Money. subtotal / tax_amount / total_amount / balance_due are derived
+    # from the lines and always recomputed by the serializer.
+    subtotal = models.DecimalField(max_digits=16, decimal_places=2,
+                                   default=Decimal('0.00'))
+    discount = models.DecimalField(max_digits=16, decimal_places=2,
+                                   default=Decimal('0.00'))
+    other_charges_label = models.CharField(
+        max_length=120, blank=True, help_text='e.g. Loading / customs / fuel.')
+    other_charges = models.DecimalField(max_digits=16, decimal_places=2,
+                                        default=Decimal('0.00'))
+    tax_percent = models.DecimalField(max_digits=6, decimal_places=2,
+                                      default=Decimal('0.00'))
+    tax_amount = models.DecimalField(max_digits=16, decimal_places=2,
+                                     default=Decimal('0.00'))
+    total_amount = models.DecimalField(max_digits=16, decimal_places=2,
+                                       default=Decimal('0.00'))
+
+    # Payments: the advance (with the date it was paid), any further amount
+    # received (with its date) and the date agreed for the remaining balance.
+    advance_amount = models.DecimalField(max_digits=16, decimal_places=2,
+                                         default=Decimal('0.00'))
+    advance_date = models.DateField(blank=True, null=True)
+    amount_received = models.DecimalField(max_digits=16, decimal_places=2,
+                                          default=Decimal('0.00'))
+    received_date = models.DateField(blank=True, null=True)
+    balance_due = models.DecimalField(max_digits=16, decimal_places=2,
+                                      default=Decimal('0.00'))
+    balance_due_date = models.DateField(
+        blank=True, null=True,
+        help_text='Date agreed with the customer for the remaining payment.')
+    payment_method = models.CharField(max_length=20,
+                                      choices=DOC_PAYMENT_CHOICES, blank=True)
+    payment_bank_name = models.CharField(max_length=150, blank=True)
+    payment_account_title = models.CharField(max_length=150, blank=True)
+    payment_account_number = models.CharField(max_length=60, blank=True)
+    transaction_reference = models.CharField(max_length=120, blank=True)
+
+    notes = models.TextField(blank=True)
+    terms = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-invoice_date', '-created_at']
+
+    def __str__(self):
+        return f'{self.invoice_number} - {self.bill_to_name}'
+
+    def save(self, *args, **kwargs):
+        if not self.invoice_number:
+            year = (self.invoice_date.year if self.invoice_date
+                    else date.today().year)
+            self.invoice_number = next_document_number(
+                Invoice, 'invoice_number', f'INV-{year}-')
+        super().save(*args, **kwargs)
+
+    @property
+    def amount_paid(self):
+        return _q(self.advance_amount) + _q(self.amount_received)
+
+    @property
+    def payment_status(self):
+        if self.total_amount > 0 and self.balance_due <= 0:
+            return 'paid'
+        if self.amount_paid > 0:
+            return 'partial'
+        return 'unpaid'
+
+
+class InvoiceItem(models.Model):
+    """A charge line on an invoice (freight, loading, packing, ...)."""
+
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE,
+                                related_name='items')
+    item = models.ForeignKey(Item, on_delete=models.SET_NULL, null=True,
+                             blank=True, related_name='invoice_lines')
+    description = models.CharField(max_length=255)
+    unit = models.CharField(max_length=30, blank=True,
+                            help_text='e.g. kg, pcs, carton, trip.')
+    weight_kg = models.DecimalField(max_digits=12, decimal_places=3,
+                                    blank=True, null=True)
+    quantity = models.DecimalField(max_digits=12, decimal_places=3,
+                                   default=Decimal('1'))
+    rate = models.DecimalField(max_digits=16, decimal_places=2,
+                               default=Decimal('0.00'))
+    amount = models.DecimalField(max_digits=16, decimal_places=2,
+                                 default=Decimal('0.00'))
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f'{self.description} ({self.amount})'
+
+
+def compute_salary_totals(basic_salary, earnings, deductions, tax_percent=0,
+                          tax_amount=0):
+    """Pure calculation used by the serializer (mirrored by the JS preview).
+
+        gross      = basic + sum(earnings)
+        tax        = gross * tax% / 100   (or the fixed tax_amount if tax% = 0)
+        deductions = tax + sum(deductions)
+        net        = gross - deductions
+    """
+    gross = _q(_q(basic_salary) + sum((_q(a) for a in earnings), Decimal('0')))
+    if Decimal(tax_percent or 0) > 0:
+        tax = _q(gross * Decimal(tax_percent) / Decimal('100'))
+    else:
+        tax = _q(tax_amount)
+    total_ded = _q(tax + sum((_q(a) for a in deductions), Decimal('0')))
+    return {
+        'gross_earnings': gross,
+        'tax_amount': tax,
+        'total_deductions': total_ded,
+        'net_pay': _q(gross - total_ded),
+    }
+
+
+class SalarySlip(models.Model):
+    """A pay slip for an employee. Employee details are snapshotted so later
+    HR edits never change an issued slip."""
+
+    STATUS_PENDING = 'pending'
+    STATUS_PAID = 'paid'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_PAID, 'Paid'),
+    ]
+
+    slip_number = models.CharField(
+        max_length=60, unique=True, blank=True,
+        help_text='Auto-generated (e.g. SAL-2026-0001) if left blank.')
+    share_token = models.UUIDField(default=uuid.uuid4, unique=True,
+                                   editable=False)
+
+    employee = models.ForeignKey(
+        Employee, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='salary_slips')
+    employee_name = models.CharField(max_length=255)
+    employee_code = models.CharField(max_length=50, blank=True)
+    designation = models.CharField(max_length=150, blank=True)
+    department = models.CharField(max_length=150, blank=True)
+    cnic = models.CharField('CNIC', max_length=20, blank=True)
+    phone_number = models.CharField(max_length=20, blank=True)
+    email = models.CharField(max_length=120, blank=True)
+    address = models.CharField(max_length=500, blank=True)
+    joining_date = models.DateField(blank=True, null=True)
+
+    pay_period_start = models.DateField()
+    pay_period_end = models.DateField()
+    pay_date = models.DateField(blank=True, null=True)
+    working_days = models.DecimalField(max_digits=5, decimal_places=1,
+                                       blank=True, null=True)
+    days_present = models.DecimalField(max_digits=5, decimal_places=1,
+                                       blank=True, null=True)
+    leaves = models.DecimalField(max_digits=5, decimal_places=1,
+                                 blank=True, null=True)
+
+    basic_salary = models.DecimalField(max_digits=14, decimal_places=2,
+                                       default=Decimal('0.00'))
+    tax_percent = models.DecimalField(
+        max_digits=6, decimal_places=2, default=Decimal('0.00'),
+        help_text='If set, income tax = gross x tax% (overrides tax_amount).')
+    tax_amount = models.DecimalField(max_digits=14, decimal_places=2,
+                                     default=Decimal('0.00'))
+    # Derived (recomputed by the serializer from basic + lines + tax).
+    gross_earnings = models.DecimalField(max_digits=14, decimal_places=2,
+                                         default=Decimal('0.00'))
+    total_deductions = models.DecimalField(max_digits=14, decimal_places=2,
+                                           default=Decimal('0.00'))
+    net_pay = models.DecimalField(max_digits=14, decimal_places=2,
+                                  default=Decimal('0.00'))
+
+    payment_status = models.CharField(max_length=20, choices=STATUS_CHOICES,
+                                      default=STATUS_PAID)
+    payment_method = models.CharField(max_length=20,
+                                      choices=DOC_PAYMENT_CHOICES,
+                                      default=DOC_PAYMENT_CASH)
+    bank_name = models.CharField(max_length=150, blank=True)
+    bank_account_title = models.CharField(max_length=150, blank=True)
+    bank_account_number = models.CharField(max_length=60, blank=True)
+    transaction_id = models.CharField(max_length=120, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-pay_period_start', '-created_at']
+
+    def __str__(self):
+        return f'{self.slip_number} - {self.employee_name}'
+
+    def save(self, *args, **kwargs):
+        if not self.slip_number:
+            year = (self.pay_period_start.year if self.pay_period_start
+                    else date.today().year)
+            self.slip_number = next_document_number(
+                SalarySlip, 'slip_number', f'SAL-{year}-')
+        super().save(*args, **kwargs)
+
+
+class SalarySlipLine(models.Model):
+    """An allowance (earning) or deduction line on a salary slip."""
+
+    KIND_EARNING = 'earning'
+    KIND_DEDUCTION = 'deduction'
+    KIND_CHOICES = [
+        (KIND_EARNING, 'Earning'),
+        (KIND_DEDUCTION, 'Deduction'),
+    ]
+
+    slip = models.ForeignKey(SalarySlip, on_delete=models.CASCADE,
+                             related_name='lines')
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    label = models.CharField(max_length=150)
+    amount = models.DecimalField(max_digits=14, decimal_places=2,
+                                 default=Decimal('0.00'))
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f'{self.get_kind_display()}: {self.label} ({self.amount})'

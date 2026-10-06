@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Invoices - Syed Logistic{% endblock %}
+{% block meta_robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/finance.css' %}" rel="stylesheet">
+<link href="{% static 'css/documents.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="fin-wrap">
+    <div class="container">
+        <div class="fin-page-head">
+            <div>
+                <h1>Invoices</h1>
+                <div class="text-muted">Customer invoices with advance, received and remaining amounts. Download as PDF or send on WhatsApp.</div>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/dashboard/" class="btn btn-outline-secondary"><i class="fa fa-chart-line me-2"></i>Dashboard</a>
+                <button type="button" class="btn btn-outline-secondary" id="btnCompany"><i class="fa fa-building me-2"></i>Company Details</button>
+                <a href="/invoices/new/" class="btn btn-primary"><i class="fa fa-plus me-2"></i>New Invoice</a>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4" id="kpis"></div>
+
+        <div class="fin-card">
+            <div class="fin-toolbar">
+                <div>
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" id="fSearch" placeholder="Invoice no., customer, phone, bilty…">
+                </div>
+                <div>
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="fStatus">
+                        <option value="">All</option>
+                        <option value="unpaid">Unpaid</option>
+                        <option value="partial">Partially paid</option>
+                        <option value="paid">Paid</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">From</label>
+                    <input type="date" class="form-control" id="fFrom">
+                </div>
+                <div>
+                    <label class="form-label">To</label>
+                    <input type="date" class="form-control" id="fTo">
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary" id="btnReset"><i class="fa fa-undo me-1"></i>Reset</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="fin-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice</th>
+                            <th>Customer</th>
+                            <th>Route</th>
+                            <th class="num">Total</th>
+                            <th class="num">Paid</th>
+                            <th class="num">Balance</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rows"><tr><td colspan="8" class="fin-empty">Loading…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/finance.js' %}"></script>
+<script src="{% static 'js/documents.js' %}"></script>
+<script>
+(function () {
+    var F = window.Finance, D = window.Docs;
+    D.setLogo('{% static "img/logo.svg" %}');
+    var rows = document.getElementById('rows');
+    var filters = { search: '', status: '', from: '', to: '' };
+    var cache = {};
+    var company = {};
+    var today = D.isoDate(new Date());
+
+    D.loadCompany().then(function (c) { company = c; }).catch(function () {});
+
+    function badge(inv) {
+        var overdue = Number(inv.balance_due) > 0 && inv.balance_due_date && inv.balance_due_date < today;
+        if (overdue) { return '<span class="fin-badge debit">Overdue</span>'; }
+        return {
+            paid: '<span class="fin-badge settled">Paid</span>',
+            partial: '<span class="fin-badge due">Partial</span>',
+            unpaid: '<span class="fin-badge others">Unpaid</span>'
+        }[inv.payment_status];
+    }
+
+    function renderKpis(list) {
+        var sum = function (k) { return list.reduce(function (s, i) { return s + Number(i[k] || 0); }, 0); };
+        var overdue = list.filter(function (i) {
+            return Number(i.balance_due) > 0 && i.balance_due_date && i.balance_due_date < today;
+        }).length;
+        document.getElementById('kpis').innerHTML =
+            '<div class="col-6 col-lg-3"><div class="fin-kpi is-revenue"><div class="label">Invoiced</div><div class="value">' + F.money(sum('total_amount')) + '</div><div class="sub">' + list.length + ' invoices</div></div></div>'
+            + '<div class="col-6 col-lg-3"><div class="fin-kpi is-received"><div class="label">Received (advance + payments)</div><div class="value">' + F.money(sum('amount_paid')) + '</div></div></div>'
+            + '<div class="col-6 col-lg-3"><div class="fin-kpi is-outstanding"><div class="label">Remaining balance</div><div class="value">' + F.money(sum('balance_due')) + '</div></div></div>'
+            + '<div class="col-6 col-lg-3"><div class="fin-kpi is-expense"><div class="label">Overdue</div><div class="value">' + overdue + '</div><div class="sub">past the agreed date</div></div></div>';
+    }
+
+    function load() {
+        rows.innerHTML = '<tr><td colspan="8" class="fin-empty">Loading…</td></tr>';
+        F.get('invoices/', filters).then(function (list) {
+            list = list || [];
+            cache = {};
+            list.forEach(function (i) { cache[i.id] = i; });
+            renderKpis(list);
+            if (!list.length) {
+                rows.innerHTML = '<tr><td colspan="8" class="fin-empty">No invoices yet. <a href="/invoices/new/">Create the first one</a>.</td></tr>';
+                return;
+            }
+            rows.innerHTML = list.map(function (i) {
+                var route = [i.origin, i.destination].filter(Boolean).join(' → ');
+                var due = Number(i.balance_due) > 0 && i.balance_due_date
+                    ? '<br><small class="text-muted">by ' + F.escapeHtml(D.fmtDate(i.balance_due_date)) + '</small>' : '';
+                return '<tr>'
+                    + '<td><a href="/invoices/' + i.id + '/edit/"><strong>' + F.escapeHtml(i.invoice_number) + '</strong></a>'
+                    + '<br><small class="text-muted">' + F.escapeHtml(D.fmtDate(i.invoice_date)) + '</small></td>'
+                    + '<td>' + F.escapeHtml(i.bill_to_name)
+                    + (i.bill_to_phone ? '<br><small class="text-muted">' + F.escapeHtml(i.bill_to_phone) + '</small>' : '') + '</td>'
+                    + '<td>' + (F.escapeHtml(route) || '<span class="text-muted">-</span>')
+                    + (i.tracking_number ? '<br><small class="text-muted">' + F.escapeHtml(i.tracking_number) + '</small>' : '') + '</td>'
+                    + '<td class="num">' + F.money(i.total_amount) + '</td>'
+                    + '<td class="num">' + F.money(i.amount_paid) + '</td>'
+                    + '<td class="num">' + F.money(i.balance_due) + due + '</td>'
+                    + '<td>' + badge(i) + '</td>'
+                    + '<td class="text-end text-nowrap">'
+                    + '<a class="btn btn-sm btn-outline-primary me-1" href="/invoices/' + i.id + '/edit/" title="Open / edit"><i class="fa fa-pen"></i></a>'
+                    + '<button class="btn btn-sm btn-outline-secondary me-1" data-pdf="' + i.id + '" title="Download PDF"><i class="fa fa-file-pdf"></i></button>'
+                    + '<button class="btn btn-sm btn-outline-success me-1" data-share="' + i.id + '" title="Send on WhatsApp"><i class="fab fa-whatsapp"></i></button>'
+                    + '<button class="btn btn-sm btn-outline-danger" data-del="' + i.id + '" title="Delete"><i class="fa fa-trash"></i></button>'
+                    + '</td></tr>';
+            }).join('');
+        }).catch(function () {
+            rows.innerHTML = '<tr><td colspan="8" class="fin-empty text-danger">Failed to load invoices.</td></tr>';
+        });
+    }
+
+    rows.addEventListener('click', function (ev) {
+        var pdf = ev.target.closest('[data-pdf]');
+        var share = ev.target.closest('[data-share]');
+        var del = ev.target.closest('[data-del]');
+        if (pdf) {
+            pdf.disabled = true;
+            D.downloadPdf('invoice', cache[pdf.getAttribute('data-pdf')], company)
+                .catch(function (err) { F.toast((err && err.message) || 'Could not create the PDF.', 'danger'); })
+                .finally(function () { pdf.disabled = false; });
+        } else if (share) {
+            var inv = cache[share.getAttribute('data-share')];
+            D.openShare({ kind: 'invoice', data: inv, company: company, phone: inv.bill_to_phone || inv.ship_to_phone });
+        } else if (del) {
+            var id = del.getAttribute('data-del');
+            if (confirm('Delete invoice ' + cache[id].invoice_number + '? Its share link will stop working.')) {
+                F.del('invoices/' + id + '/').then(function () { F.toast('Invoice deleted.'); load(); })
+                    .catch(function (err) { F.toast(F.errorText(err), 'danger'); });
+            }
+        }
+    });
+
+    var t;
+    document.getElementById('fSearch').addEventListener('input', function (e) {
+        clearTimeout(t); t = setTimeout(function () { filters.search = e.target.value.trim(); load(); }, 300);
+    });
+    ['fStatus', 'fFrom', 'fTo'].forEach(function (id) {
+        document.getElementById(id).addEventListener('change', function (e) {
+            filters[{ fStatus: 'status', fFrom: 'from', fTo: 'to' }[id]] = e.target.value;
+            load();
+        });
+    });
+    document.getElementById('btnReset').addEventListener('click', function () {
+        filters = { search: '', status: '', from: '', to: '' };
+        ['fSearch', 'fStatus', 'fFrom', 'fTo'].forEach(function (id) { document.getElementById(id).value = ''; });
+        load();
+    });
+    document.getElementById('btnCompany').addEventListener('click', function () {
+        D.editCompany(function (c) { company = c; });
+    });
+
+    load();
+})();
+</script>
+{% endblock %}

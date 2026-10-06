@@ -39,11 +39,12 @@
                             <th>Name</th>
                             <th class="num">Weight (kg)</th>
                             <th class="num">Amount</th>
+                            <th class="num">Quantity</th>
                             <th>Status</th>
                             <th class="text-end">Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="itemRows"><tr><td colspan="6" class="fin-empty">Loading…</td></tr></tbody>
+                    <tbody id="itemRows"><tr><td colspan="7" class="fin-empty">Loading…</td></tr></tbody>
                 </table>
             </div>
         </div>
@@ -77,6 +78,11 @@
                             <label class="form-label">Amount (Rs)</label>
                             <input type="number" step="0.01" min="0" class="form-control" id="iAmount" value="0">
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" step="1" min="0" class="form-control" id="iQuantity" value="1">
+                            <div class="form-text">Default quantity when this item is added to a shipment or invoice.</div>
+                        </div>
                         <div class="col-12">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="iActive" checked>
@@ -105,11 +111,11 @@
     var search = '';
 
     function load() {
-        rows.innerHTML = '<tr><td colspan="6" class="fin-empty">Loading…</td></tr>';
+        rows.innerHTML = '<tr><td colspan="7" class="fin-empty">Loading…</td></tr>';
         F.get('items/', { search: search }).then(function (data) {
             data = data || [];
             if (!data.length) {
-                rows.innerHTML = '<tr><td colspan="6" class="fin-empty">No items found.</td></tr>';
+                rows.innerHTML = '<tr><td colspan="7" class="fin-empty">No items found.</td></tr>';
                 return;
             }
             rows.innerHTML = data.map(function (it) {
@@ -118,6 +124,7 @@
                     + '<td>' + F.escapeHtml(it.name) + '</td>'
                     + '<td class="num">' + Number(it.weight_kg).toLocaleString() + '</td>'
                     + '<td class="num">' + F.money(it.amount) + '</td>'
+                    + '<td class="num">' + Number(it.quantity).toLocaleString() + '</td>'
                     + '<td>' + (it.is_active ? '<span class="fin-badge settled">Active</span>' : '<span class="fin-badge others">Inactive</span>') + '</td>'
                     + '<td class="text-end">'
                     + '<button class="btn btn-sm btn-outline-primary me-1" data-edit="' + it.id + '"><i class="fa fa-pen"></i></button>'
@@ -125,7 +132,7 @@
                     + '</td></tr>';
             }).join('');
         }).catch(function () {
-            rows.innerHTML = '<tr><td colspan="6" class="fin-empty text-danger">Failed to load items.</td></tr>';
+            rows.innerHTML = '<tr><td colspan="7" class="fin-empty text-danger">Failed to load items.</td></tr>';
         });
     }
 
@@ -138,6 +145,7 @@
             document.getElementById('iName').value = it.name;
             document.getElementById('iWeight').value = it.weight_kg;
             document.getElementById('iAmount').value = it.amount;
+            document.getElementById('iQuantity').value = it.quantity;
             document.getElementById('iActive').checked = it.is_active;
         } else {
             document.getElementById('itemModalTitle').textContent = 'Add Item';
@@ -157,6 +165,7 @@
             name: document.getElementById('iName').value.trim(),
             weight_kg: document.getElementById('iWeight').value || 0,
             amount: document.getElementById('iAmount').value || 0,
+            quantity: document.getElementById('iQuantity').value || 0,
             is_active: document.getElementById('iActive').checked
         };
         var btn = document.getElementById('btnSaveItem');

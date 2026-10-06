@@ -1,0 +1,526 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Salary Slip Workspace - Syed Logistic{% endblock %}
+{% block meta_robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/finance.css' %}" rel="stylesheet">
+<link href="{% static 'css/documents.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="fin-wrap doc-workspace">
+    <div class="container-xxl px-lg-4">
+        <div class="fin-page-head">
+            <div>
+                <h1 id="pageTitle">Salary Slip Workspace</h1>
+                <div class="text-muted">Pick an employee, set the pay period and amounts - the slip on the right updates as you type.</div>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/salary-slips/" class="btn btn-outline-secondary"><i class="fa fa-list me-2"></i>All Salary Slips</a>
+                <button type="button" class="btn btn-outline-secondary" id="btnCompany"><i class="fa fa-building me-2"></i>Company Details</button>
+                <a href="/salary-slips/new/" class="btn btn-primary"><i class="fa fa-plus me-2"></i>New Slip</a>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-xl-6">
+                <form class="fin-card" id="slipForm" novalidate autocomplete="off">
+                    <div class="doc-form-section">
+                        <h6><span><i class="fa fa-calendar-alt"></i>Slip &amp; pay period</span></h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Slip number</label>
+                                <input class="form-control" name="slip_number" id="fNumber" placeholder="Auto">
+                                <div class="form-text">Leave blank to auto-number (SAL-YYYY-0001).</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Salary month</label>
+                                <input type="month" class="form-control" id="fMonth">
+                                <div class="form-text">Sets the period dates and working days below.</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Period from <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" name="pay_period_start" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Period to <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" name="pay_period_end" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Pay date</label>
+                                <input type="date" class="form-control" name="pay_date">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-form-section">
+                        <h6><span><i class="fa fa-id-badge"></i>Employee</span></h6>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">Select employee</label>
+                                <select class="form-select" name="employee" id="fEmployee"><option value="">- Select an employee -</option></select>
+                                <div class="form-text">Details, salary and bank account are filled from the <a href="/employees/" target="_blank">employee record</a>; you can still edit them for this slip.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Employee name <span class="text-danger">*</span></label>
+                                <input class="form-control" name="employee_name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Employee code / ID</label>
+                                <input class="form-control" name="employee_code">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Designation</label>
+                                <input class="form-control" name="designation">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Department</label>
+                                <input class="form-control" name="department">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">CNIC</label>
+                                <input class="form-control" name="cnic" placeholder="00000-0000000-0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Phone / WhatsApp</label>
+                                <input class="form-control" name="phone_number">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Joining date</label>
+                                <input type="date" class="form-control" name="joining_date">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" name="email">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Address</label>
+                                <input class="form-control" name="address">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-form-section">
+                        <h6><span><i class="fa fa-user-clock"></i>Attendance</span></h6>
+                        <div class="row g-3">
+                            <div class="col-4">
+                                <label class="form-label">Working days</label>
+                                <input type="number" min="0" step="0.5" class="form-control" name="working_days">
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label">Days present</label>
+                                <input type="number" min="0" step="0.5" class="form-control" name="days_present">
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label">Paid leaves</label>
+                                <input type="number" min="0" step="0.5" class="form-control" name="leaves">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-form-section">
+                        <h6>
+                            <span><i class="fa fa-plus-circle"></i>Earnings</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-add="earning"><i class="fa fa-plus me-1"></i>Add allowance</button>
+                        </h6>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Basic salary (Rs) <span class="text-danger">*</span></label>
+                                <input type="number" min="0" step="0.01" class="form-control" name="basic_salary" value="0">
+                            </div>
+                        </div>
+                        <div class="doc-chips" data-chips="earning">
+                            <button type="button">House rent</button><button type="button">Medical allowance</button>
+                            <button type="button">Conveyance / fuel</button><button type="button">Overtime</button>
+                            <button type="button">Bonus</button><button type="button">Mobile allowance</button>
+                            <button type="button">Daily allowance (TA/DA)</button>
+                        </div>
+                        <div id="earningLines"></div>
+                    </div>
+
+                    <div class="doc-form-section">
+                        <h6>
+                            <span><i class="fa fa-minus-circle"></i>Tax &amp; deductions</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-add="deduction"><i class="fa fa-plus me-1"></i>Add deduction</button>
+                        </h6>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Income tax (%)</label>
+                                <input type="number" min="0" max="100" step="0.01" class="form-control" name="tax_percent" value="0">
+                                <div class="form-text">Applied to gross salary. Set 0 to enter a fixed amount instead.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Income tax amount (Rs)</label>
+                                <input type="number" min="0" step="0.01" class="form-control" name="tax_amount" value="0">
+                            </div>
+                        </div>
+                        <div class="doc-chips" data-chips="deduction">
+                            <button type="button">Advance / loan recovery</button><button type="button" data-absent="1">Absent days deduction</button>
+                            <button type="button">EOBI</button><button type="button">Provident fund</button>
+                            <button type="button">Late coming penalty</button>
+                        </div>
+                        <div id="deductionLines"></div>
+                        <div class="doc-sum-strip" id="sumStrip"></div>
+                    </div>
+
+                    <div class="doc-form-section">
+                        <h6><span><i class="fa fa-money-check-alt"></i>Payment</span></h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" name="payment_status">
+                                    <option value="paid">Paid</option>
+                                    <option value="pending">Pending</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Paid by</label>
+                                <select class="form-select" name="payment_method">
+                                    <option value="cash">Cash</option>
+                                    <option value="bank">Bank Transfer</option>
+                                    <option value="cheque">Cheque</option>
+                                    <option value="online">Online (JazzCash / Easypaisa)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 js-bank">
+                                <label class="form-label">Bank name</label>
+                                <input class="form-control" name="bank_name">
+                            </div>
+                            <div class="col-md-4 js-bank">
+                                <label class="form-label">Account title</label>
+                                <input class="form-control" name="bank_account_title">
+                            </div>
+                            <div class="col-md-4 js-bank">
+                                <label class="form-label">Account no. / IBAN</label>
+                                <input class="form-control" name="bank_account_number">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Transaction ID / cheque no. <small class="text-muted">(optional)</small></label>
+                                <input class="form-control" name="transaction_id">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Notes</label>
+                                <textarea class="form-control" rows="2" name="notes"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-actions">
+                        <button type="submit" class="btn btn-outline-primary" id="btnSave"><i class="fa fa-save me-2"></i>Save slip</button>
+                        <button type="button" class="btn btn-primary" id="btnPdf"><i class="fa fa-file-pdf me-2"></i>Download PDF</button>
+                        <button type="button" class="btn btn-whatsapp" id="btnShare"><i class="fab fa-whatsapp me-2"></i>Send on WhatsApp</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="col-xl-6">
+                <div class="doc-preview-col">
+                    <div class="doc-preview-shell">
+                        <div class="doc-preview-bar">
+                            <span><i class="fa fa-eye me-1"></i>Live preview (A4)</span>
+                            <span id="saveState" class="text-muted">Not saved yet</span>
+                        </div>
+                        <div class="doc-stage" id="docStage"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/finance.js' %}"></script>
+<script src="{% static 'js/documents.js' %}"></script>
+<script>
+(function () {
+    var F = window.Finance, D = window.Docs;
+    D.setLogo('{% static "img/logo.svg" %}');
+
+    var slipId = {{ view.kwargs.pk|default:"null" }};
+    var form = document.getElementById('slipForm');
+    var preview = D.mountPreview(document.getElementById('docStage'));
+    var state = { company: {}, nextNumber: '', employees: [] };
+    var containers = {
+        earning: document.getElementById('earningLines'),
+        deduction: document.getElementById('deductionLines')
+    };
+
+    var FIELDS = ['slip_number', 'employee', 'employee_name', 'employee_code', 'designation', 'department',
+        'cnic', 'phone_number', 'email', 'address', 'joining_date', 'pay_period_start', 'pay_period_end',
+        'pay_date', 'working_days', 'days_present', 'leaves', 'basic_salary', 'tax_percent', 'tax_amount',
+        'payment_status', 'payment_method', 'bank_name', 'bank_account_title', 'bank_account_number',
+        'transaction_id', 'notes'];
+    var NULLABLE = ['employee', 'joining_date', 'pay_date', 'working_days', 'days_present', 'leaves'];
+    var ZERO_DEFAULT = ['basic_salary', 'tax_percent', 'tax_amount'];
+
+    function field(name) { return form.elements[name]; }
+    function val(name) { return (field(name).value || '').trim(); }
+    function setVal(name, v) { field(name).value = v == null ? '' : v; }
+
+    // ---------------------------------------------------------------- lines
+    function addLine(kind, line) {
+        line = line || {};
+        var row = document.createElement('div');
+        row.className = 'doc-pair-line';
+        row.innerHTML = '<input class="form-control line-label" placeholder="' + (kind === 'earning' ? 'Allowance' : 'Deduction') + '">'
+            + '<input type="number" min="0" step="0.01" class="form-control line-amount" placeholder="0.00">'
+            + '<button type="button" class="btn btn-outline-danger doc-icon-btn line-remove" title="Remove"><i class="fa fa-times"></i></button>';
+        row.querySelector('.line-label').value = line.label || '';
+        row.querySelector('.line-amount').value = line.amount != null ? line.amount : '';
+        containers[kind].appendChild(row);
+        return row;
+    }
+
+    function readLines() {
+        var out = [];
+        Object.keys(containers).forEach(function (kind) {
+            Array.prototype.forEach.call(containers[kind].querySelectorAll('.doc-pair-line'), function (row) {
+                var label = row.querySelector('.line-label').value.trim();
+                var amount = row.querySelector('.line-amount').value;
+                if (label || Number(amount)) { out.push({ kind: kind, label: label, amount: amount || '0' }); }
+            });
+        });
+        return out;
+    }
+
+    Object.keys(containers).forEach(function (kind) {
+        containers[kind].addEventListener('click', function (ev) {
+            var btn = ev.target.closest('.line-remove');
+            if (btn) { btn.closest('.doc-pair-line').remove(); refresh(); }
+        });
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-add]'), function (btn) {
+        btn.addEventListener('click', function () {
+            addLine(btn.getAttribute('data-add')).querySelector('.line-label').focus();
+        });
+    });
+
+    function absentDeduction() {
+        var wd = D.num(val('working_days')), present = D.num(val('days_present')), leaves = D.num(val('leaves'));
+        var absent = Math.max(0, wd - present - leaves);
+        if (!wd || !val('days_present') || !absent) { return ''; }
+        return D.round2(D.num(val('basic_salary')) / wd * absent).toFixed(2);
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-chips]'), function (wrap) {
+        var kind = wrap.getAttribute('data-chips');
+        wrap.addEventListener('click', function (ev) {
+            var chip = ev.target.closest('button');
+            if (!chip) { return; }
+            var row = addLine(kind, { label: chip.textContent.trim() });
+            if (chip.hasAttribute('data-absent')) {
+                var amt = absentDeduction();
+                if (amt) { row.querySelector('.line-amount').value = amt; }
+                else { F.toast('Enter working days and days present to calculate the absent deduction.', 'warning'); }
+            }
+            row.querySelector('.line-amount').focus();
+            refresh();
+        });
+    });
+
+    // -------------------------------------------------------------- refresh
+    function readForm() {
+        var d = {};
+        FIELDS.forEach(function (n) { d[n] = val(n); });
+        d.lines = readLines();
+        return d;
+    }
+
+    function previewData() {
+        var d = readForm();
+        d.slip_number = d.slip_number || state.nextNumber;
+        d.tax_amount = D.calcSlip(d).tax_amount;
+        return d;
+    }
+
+    function refresh() {
+        var d = readForm();
+        var t = D.calcSlip(d);
+        var pctTax = D.num(d.tax_percent) > 0;
+        field('tax_amount').readOnly = pctTax;
+        field('tax_amount').classList.toggle('doc-readonly', pctTax);
+        if (pctTax) { field('tax_amount').value = t.tax_amount.toFixed(2); }
+        document.getElementById('sumStrip').innerHTML =
+            '<div><small>Gross salary</small><strong>' + D.money(t.gross_earnings) + '</strong></div>'
+            + '<div><small>Deductions</small><strong>' + D.money(t.total_deductions) + '</strong></div>'
+            + '<div><small>Net pay</small><strong>' + D.money(t.net_pay) + '</strong></div>';
+        var bank = val('payment_method') !== 'cash';
+        Array.prototype.forEach.call(form.querySelectorAll('.js-bank'), function (el) {
+            el.style.display = bank ? '' : 'none';
+        });
+        preview.update(D.render('salary_slip', previewData(), state.company));
+    }
+
+    var timer;
+    form.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(refresh, 120); });
+    form.addEventListener('change', refresh);
+
+    // ------------------------------------------------------------- prefills
+    document.getElementById('fMonth').addEventListener('change', function (ev) {
+        var m = /^(\d{4})-(\d{2})$/.exec(ev.target.value);
+        if (!m) { return; }
+        var y = +m[1], mo = +m[2] - 1;
+        var start = new Date(y, mo, 1), end = new Date(y, mo + 1, 0);
+        setVal('pay_period_start', D.isoDate(start));
+        setVal('pay_period_end', D.isoDate(end));
+        var working = 0;
+        for (var d = 1; d <= end.getDate(); d++) {
+            if (new Date(y, mo, d).getDay() !== 0) { working++; } // Mon-Sat
+        }
+        setVal('working_days', working);
+        if (!val('days_present')) { setVal('days_present', working); }
+        refresh();
+    });
+
+    document.getElementById('fEmployee').addEventListener('change', function (ev) {
+        var e = state.employees.filter(function (x) { return String(x.id) === ev.target.value; })[0];
+        if (!e) { return; }
+        setVal('employee_name', e.name);
+        setVal('employee_code', e.employee_code);
+        setVal('designation', e.designation);
+        setVal('department', e.department);
+        setVal('cnic', e.cnic);
+        setVal('phone_number', e.phone_number);
+        setVal('email', e.email);
+        setVal('address', e.address);
+        setVal('joining_date', e.joining_date);
+        setVal('basic_salary', e.salary);
+        setVal('bank_name', e.bank_name);
+        setVal('bank_account_title', e.bank_account_title || (e.bank_account_number ? e.name : ''));
+        setVal('bank_account_number', e.bank_account_number);
+        if (e.bank_account_number) { setVal('payment_method', 'bank'); }
+        refresh();
+    });
+
+    document.getElementById('btnCompany').addEventListener('click', function () {
+        D.editCompany(function (c) { state.company = c; refresh(); });
+    });
+
+    // ----------------------------------------------------------------- save
+    function payload() {
+        var d = readForm();
+        var out = {};
+        FIELDS.forEach(function (n) {
+            var v = d[n];
+            if (v === '' && NULLABLE.indexOf(n) !== -1) { v = null; }
+            if (v === '' && ZERO_DEFAULT.indexOf(n) !== -1) { v = '0'; }
+            out[n] = v;
+        });
+        if (!out.slip_number) { delete out.slip_number; }
+        out.lines = d.lines.map(function (l) {
+            return { kind: l.kind, label: l.label || (l.kind === 'earning' ? 'Allowance' : 'Deduction'), amount: l.amount };
+        });
+        return out;
+    }
+
+    function validate() {
+        var problems = [];
+        if (!val('employee_name')) { problems.push('employee name'); }
+        if (!val('pay_period_start') || !val('pay_period_end')) { problems.push('the pay period dates'); }
+        if (!(D.num(val('basic_salary')) > 0)) { problems.push('basic salary'); }
+        if (problems.length) {
+            F.toast('Please add ' + problems.join(', ') + '.', 'warning');
+            return false;
+        }
+        return true;
+    }
+
+    function applySaved(slip) {
+        slipId = slip.id;
+        state.saved = slip;
+        setVal('slip_number', slip.slip_number);
+        document.getElementById('pageTitle').textContent = 'Salary Slip ' + slip.slip_number;
+        document.getElementById('saveState').textContent = 'Saved · ' + new Date().toLocaleTimeString();
+        if (window.location.pathname !== '/salary-slips/' + slip.id + '/edit/') {
+            window.history.replaceState(null, '', '/salary-slips/' + slip.id + '/edit/');
+        }
+        refresh();
+    }
+
+    function save() {
+        if (!validate()) { return Promise.reject(null); }
+        var btn = document.getElementById('btnSave');
+        btn.disabled = true;
+        var op = slipId ? F.put('salary-slips/' + slipId + '/', payload()) : F.post('salary-slips/', payload());
+        return op.then(function (slip) {
+            applySaved(slip);
+            return slip;
+        }).catch(function (err) {
+            F.toast(D.errorText(err), 'danger');
+            throw null;
+        }).finally(function () { btn.disabled = false; });
+    }
+
+    form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        save().then(function () { F.toast('Salary slip saved.'); }).catch(function () {});
+    });
+
+    document.getElementById('btnPdf').addEventListener('click', function () {
+        var btn = this;
+        btn.disabled = true;
+        D.downloadPdf('salary_slip', previewData(), state.company)
+            .catch(function (err) { F.toast((err && err.message) || 'Could not create the PDF.', 'danger'); })
+            .finally(function () { btn.disabled = false; });
+    });
+
+    document.getElementById('btnShare').addEventListener('click', function () {
+        save().then(function (slip) {
+            D.openShare({ kind: 'salary_slip', data: slip, company: state.company, phone: slip.phone_number });
+        }).catch(function () {});
+    });
+
+    // ----------------------------------------------------------------- boot
+    function fillSlip(slip) {
+        FIELDS.forEach(function (n) { setVal(n, slip[n]); });
+        if (slip.pay_period_start) { document.getElementById('fMonth').value = slip.pay_period_start.slice(0, 7); }
+        containers.earning.innerHTML = '';
+        containers.deduction.innerHTML = '';
+        (slip.lines || []).forEach(function (l) { addLine(l.kind, l); });
+        applySaved(slip);
+    }
+
+    var params = new URLSearchParams(window.location.search);
+    Promise.all([
+        D.loadCompany().then(function (c) { state.company = c; }).catch(function () {}),
+        F.get('employees/').then(function (list) {
+            state.employees = list || [];
+            var sel = document.getElementById('fEmployee');
+            state.employees.forEach(function (e) {
+                var o = document.createElement('option');
+                o.value = e.id;
+                o.textContent = e.name + ' · ' + e.designation + (e.is_active ? '' : ' (inactive)');
+                sel.appendChild(o);
+            });
+        }).catch(function () { F.toast('Could not load employees.', 'warning'); })
+    ]).then(function () {
+        if (slipId) {
+            return F.get('salary-slips/' + slipId + '/').then(fillSlip).catch(function () {
+                F.toast('Salary slip not found.', 'danger');
+            });
+        }
+        var today = new Date();
+        var month = document.getElementById('fMonth');
+        month.value = D.isoDate(today).slice(0, 7);
+        month.dispatchEvent(new Event('change'));
+        setVal('pay_date', D.isoDate(today));
+        if (params.get('employee')) {
+            setVal('employee', params.get('employee'));
+            field('employee').dispatchEvent(new Event('change'));
+        }
+        refresh();
+        return F.get('salary-slips/next_number/', { date: val('pay_period_start') }).then(function (r) {
+            state.nextNumber = r.number;
+            document.getElementById('fNumber').placeholder = r.number + ' (auto)';
+            refresh();
+        });
+    });
+
+    refresh();
+})();
+</script>
+{% endblock %}

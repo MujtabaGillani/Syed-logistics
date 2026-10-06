@@ -101,6 +101,31 @@
                             <label class="form-label">Address</label>
                             <input type="text" class="form-control" id="eAddress">
                         </div>
+                        <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Payroll details (optional - pre-filled on salary slips)</small></div>
+                        <div class="col-md-4">
+                            <label class="form-label">Employee code / ID</label>
+                            <input type="text" class="form-control" id="eCode">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Department</label>
+                            <input type="text" class="form-control" id="eDepartment">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Joining date</label>
+                            <input type="date" class="form-control" id="eJoining">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Bank name</label>
+                            <input type="text" class="form-control" id="eBank">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Account title</label>
+                            <input type="text" class="form-control" id="eAccTitle">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Account no. / IBAN</label>
+                            <input type="text" class="form-control" id="eAccNo">
+                        </div>
                         <div class="col-12">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="eActive" checked>
@@ -157,7 +182,8 @@
                     + '<td>' + F.escapeHtml(e.cnic) + '</td>'
                     + '<td class="num">' + F.money(e.salary) + '</td>'
                     + '<td>' + (e.is_active ? '<span class="fin-badge settled">Active</span>' : '<span class="fin-badge others">Inactive</span>') + '</td>'
-                    + '<td class="text-end">'
+                    + '<td class="text-end text-nowrap">'
+                    + '<a class="btn btn-sm btn-outline-success me-1" href="/salary-slips/new/?employee=' + e.id + '" title="Create salary slip"><i class="fa fa-money-check-alt"></i></a>'
                     + '<button class="btn btn-sm btn-outline-primary me-1" data-edit="' + e.id + '"><i class="fa fa-pen"></i></button>'
                     + '<button class="btn btn-sm btn-outline-danger" data-del="' + e.id + '"><i class="fa fa-trash"></i></button>'
                     + '</td></tr>';
@@ -179,6 +205,12 @@
             document.getElementById('eSalary').value = e.salary;
             document.getElementById('eEmail').value = e.email || '';
             document.getElementById('eAddress').value = e.address || '';
+            document.getElementById('eCode').value = e.employee_code || '';
+            document.getElementById('eDepartment').value = e.department || '';
+            document.getElementById('eJoining').value = e.joining_date || '';
+            document.getElementById('eBank').value = e.bank_name || '';
+            document.getElementById('eAccTitle').value = e.bank_account_title || '';
+            document.getElementById('eAccNo').value = e.bank_account_number || '';
             document.getElementById('eActive').checked = e.is_active;
         } else {
             document.getElementById('empModalTitle').textContent = 'Add Employee';
@@ -201,6 +233,12 @@
             salary: document.getElementById('eSalary').value || 0,
             email: document.getElementById('eEmail').value.trim() || null,
             address: document.getElementById('eAddress').value.trim(),
+            employee_code: document.getElementById('eCode').value.trim(),
+            department: document.getElementById('eDepartment').value.trim(),
+            joining_date: document.getElementById('eJoining').value || null,
+            bank_name: document.getElementById('eBank').value.trim(),
+            bank_account_title: document.getElementById('eAccTitle').value.trim(),
+            bank_account_number: document.getElementById('eAccNo').value.trim(),
             is_active: document.getElementById('eActive').checked
         };
         var btn = document.getElementById('btnSaveEmp');

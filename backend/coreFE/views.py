@@ -9,7 +9,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import TemplateView
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -125,6 +125,46 @@ class ShipmentsView(SecureDashboardView):
 
 class EmployeesView(SecureDashboardView):
     template_name = 'finance/employees.html'
+
+class InvoicesView(SecureDashboardView):
+    template_name = 'finance/invoices.html'
+
+class InvoiceEditorView(SecureDashboardView):
+    template_name = 'finance/invoice-editor.html'
+
+class SalarySlipsView(SecureDashboardView):
+    template_name = 'finance/salary-slips.html'
+
+class SalarySlipEditorView(SecureDashboardView):
+    template_name = 'finance/salary-slip-editor.html'
+
+
+def _shared_document(request, kind, data):
+    from finance.models import CompanyProfile
+    from finance.serializers import CompanyProfileSerializer
+    return render(request, 'finance/share-document.html', {
+        'kind': kind,
+        'doc': data,
+        'company': CompanyProfileSerializer(CompanyProfile.load()).data,
+    })
+
+
+def shared_invoice(request, token):
+    """Public, read-only view of one invoice reached via its unguessable share
+    link (sent to the customer on WhatsApp). No login required."""
+    from finance.models import Invoice
+    from finance.serializers import InvoiceSerializer
+    invoice = get_object_or_404(Invoice, share_token=token)
+    return _shared_document(request, 'invoice', InvoiceSerializer(invoice).data)
+
+
+def shared_salary_slip(request, token):
+    """Public, read-only view of one salary slip via its share link."""
+    from finance.models import SalarySlip
+    from finance.serializers import SalarySlipSerializer
+    slip = get_object_or_404(SalarySlip, share_token=token)
+    return _shared_document(request, 'salary_slip',
+                            SalarySlipSerializer(slip).data)
 
 # Health check view for Docker
 def health_check(request):

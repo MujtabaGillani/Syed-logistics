@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Salary Slips - Syed Logistic{% endblock %}
+{% block meta_robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/finance.css' %}" rel="stylesheet">
+<link href="{% static 'css/documents.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="fin-wrap">
+    <div class="container">
+        <div class="fin-page-head">
+            <div>
+                <h1>Salary Slips</h1>
+                <div class="text-muted">Monthly pay slips for your staff - earnings, tax, deductions and how the salary was paid.</div>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/employees/" class="btn btn-outline-secondary"><i class="fa fa-id-badge me-2"></i>Employees</a>
+                <button type="button" class="btn btn-outline-secondary" id="btnCompany"><i class="fa fa-building me-2"></i>Company Details</button>
+                <a href="/salary-slips/new/" class="btn btn-primary"><i class="fa fa-plus me-2"></i>New Salary Slip</a>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4" id="kpis"></div>
+
+        <div class="fin-card">
+            <div class="fin-toolbar">
+                <div>
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" id="fSearch" placeholder="Slip no., name, CNIC, designation…">
+                </div>
+                <div>
+                    <label class="form-label">Employee</label>
+                    <select class="form-select" id="fEmployee"><option value="">All</option></select>
+                </div>
+                <div>
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="fStatus">
+                        <option value="">All</option>
+                        <option value="paid">Paid</option>
+                        <option value="pending">Pending</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Period from</label>
+                    <input type="date" class="form-control" id="fFrom">
+                </div>
+                <div>
+                    <label class="form-label">Period to</label>
+                    <input type="date" class="form-control" id="fTo">
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary" id="btnReset"><i class="fa fa-undo me-1"></i>Reset</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="fin-table">
+                    <thead>
+                        <tr>
+                            <th>Slip</th>
+                            <th>Employee</th>
+                            <th>Period</th>
+                            <th class="num">Gross</th>
+                            <th class="num">Deductions</th>
+                            <th class="num">Net Pay</th>
+                            <th>Paid by</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rows"><tr><td colspan="8" class="fin-empty">Loading…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/finance.js' %}"></script>
+<script src="{% static 'js/documents.js' %}"></script>
+<script>
+(function () {
+    var F = window.Finance, D = window.Docs;
+    D.setLogo('{% static "img/logo.svg" %}');
+    var rows = document.getElementById('rows');
+    var filters = { search: '', employee: '', status: '', from: '', to: '' };
+    var cache = {};
+    var company = {};
+
+    D.loadCompany().then(function (c) { company = c; }).catch(function () {});
+    F.get('employees/').then(function (list) {
+        var sel = document.getElementById('fEmployee');
+        (list || []).forEach(function (e) {
+            var o = document.createElement('option');
+            o.value = e.id;
+            o.textContent = e.name;
+            sel.appendChild(o);
+        });
+    }).catch(function () {});
+
+    function renderKpis(list) {
+        var sum = function (k, only) {
+            return list.filter(only || function () { return true; })
+                .reduce(function (s, i) { return s + Number(i[k] || 0); }, 0);
+        };
+        var pending = function (i) { return i.payment_status === 'pending'; };
+        document.getElementById('kpis').innerHTML =
+            '<div class="col-6 col-lg-3"><div class="fin-kpi"><div class="label">Slips</div><div class="value">' + list.length + '</div></div></div>'
+            + '<div class="col-6 col-lg-3"><div class="fin-kpi is-revenue"><div class="label">Gross salaries</div><div class="value">' + F.money(sum('gross_earnings')) + '</div></div></div>'
+            + '<div class="col-6 col-lg-3"><div class="fin-kpi is-received"><div class="label">Net paid</div><div class="value">' + F.money(sum('net_pay', function (i) { return !pending(i); })) + '</div></div></div>'
+            + '<div class="col-6 col-lg-3"><div class="fin-kpi is-outstanding"><div class="label">Pending payout</div><div class="value">' + F.money(sum('net_pay', pending)) + '</div><div class="sub">' + list.filter(pending).length + ' slips</div></div></div>';
+    }
+
+    function load() {
+        rows.innerHTML = '<tr><td colspan="8" class="fin-empty">Loading…</td></tr>';
+        F.get('salary-slips/', filters).then(function (list) {
+            list = list || [];
+            cache = {};
+            list.forEach(function (s) { cache[s.id] = s; });
+            renderKpis(list);
+            if (!list.length) {
+                rows.innerHTML = '<tr><td colspan="8" class="fin-empty">No salary slips yet. <a href="/salary-slips/new/">Create the first one</a>.</td></tr>';
+                return;
+            }
+            rows.innerHTML = list.map(function (s) {
+                var paid = s.payment_status === 'paid';
+                return '<tr>'
+                    + '<td><a href="/salary-slips/' + s.id + '/edit/"><strong>' + F.escapeHtml(s.slip_number) + '</strong></a>'
+                    + (s.pay_date ? '<br><small class="text-muted">' + F.escapeHtml(D.fmtDate(s.pay_date)) + '</small>' : '') + '</td>'
+                    + '<td>' + F.escapeHtml(s.employee_name)
+                    + (s.designation ? '<br><small class="text-muted">' + F.escapeHtml(s.designation) + '</small>' : '') + '</td>'
+                    + '<td>' + F.escapeHtml(D.periodLabel(s.pay_period_start, s.pay_period_end)) + '</td>'
+                    + '<td class="num">' + F.money(s.gross_earnings) + '</td>'
+                    + '<td class="num">' + F.money(s.total_deductions) + '</td>'
+                    + '<td class="num"><strong>' + F.money(s.net_pay) + '</strong></td>'
+                    + '<td>' + (paid ? '<span class="fin-badge settled">' : '<span class="fin-badge due">')
+                    + F.escapeHtml(paid ? s.payment_method_display : 'Pending') + '</span>'
+                    + (s.transaction_id ? '<br><small class="text-muted">' + F.escapeHtml(s.transaction_id) + '</small>' : '') + '</td>'
+                    + '<td class="text-end text-nowrap">'
+                    + '<a class="btn btn-sm btn-outline-primary me-1" href="/salary-slips/' + s.id + '/edit/" title="Open / edit"><i class="fa fa-pen"></i></a>'
+                    + '<button class="btn btn-sm btn-outline-secondary me-1" data-pdf="' + s.id + '" title="Download PDF"><i class="fa fa-file-pdf"></i></button>'
+                    + '<button class="btn btn-sm btn-outline-success me-1" data-share="' + s.id + '" title="Send on WhatsApp"><i class="fab fa-whatsapp"></i></button>'
+                    + '<button class="btn btn-sm btn-outline-danger" data-del="' + s.id + '" title="Delete"><i class="fa fa-trash"></i></button>'
+                    + '</td></tr>';
+            }).join('');
+        }).catch(function () {
+            rows.innerHTML = '<tr><td colspan="8" class="fin-empty text-danger">Failed to load salary slips.</td></tr>';
+        });
+    }
+
+    rows.addEventListener('click', function (ev) {
+        var pdf = ev.target.closest('[data-pdf]');
+        var share = ev.target.closest('[data-share]');
+        var del = ev.target.closest('[data-del]');
+        if (pdf) {
+            pdf.disabled = true;
+            D.downloadPdf('salary_slip', cache[pdf.getAttribute('data-pdf')], company)
+                .catch(function (err) { F.toast((err && err.message) || 'Could not create the PDF.', 'danger'); })
+                .finally(function () { pdf.disabled = false; });
+        } else if (share) {
+            var s = cache[share.getAttribute('data-share')];
+            D.openShare({ kind: 'salary_slip', data: s, company: company, phone: s.phone_number });
+        } else if (del) {
+            var id = del.getAttribute('data-del');
+            if (confirm('Delete salary slip ' + cache[id].slip_number + '? Its share link will stop working.')) {
+                F.del('salary-slips/' + id + '/').then(function () { F.toast('Salary slip deleted.'); load(); })
+                    .catch(function (err) { F.toast(F.errorText(err), 'danger'); });
+            }
+        }
+    });
+
+    var t;
+    document.getElementById('fSearch').addEventListener('input', function (e) {
+        clearTimeout(t); t = setTimeout(function () { filters.search = e.target.value.trim(); load(); }, 300);
+    });
+    var map = { fEmployee: 'employee', fStatus: 'status', fFrom: 'from', fTo: 'to' };
+    Object.keys(map).forEach(function (id) {
+        document.getElementById(id).addEventListener('change', function (e) { filters[map[id]] = e.target.value; load(); });
+    });
+    document.getElementById('btnReset').addEventListener('click', function () {
+        filters = { search: '', employee: '', status: '', from: '', to: '' };
+        ['fSearch', 'fEmployee', 'fStatus', 'fFrom', 'fTo'].forEach(function (id) { document.getElementById(id).value = ''; });
+        load();
+    });
+    document.getElementById('btnCompany').addEventListener('click', function () {
+        D.editCompany(function (c) { company = c; });
+    });
+
+    load();
+})();
+</script>
+{% endblock %}

@@ -550,3 +550,360 @@ class SaleOrderTests(AuthenticatedAPITestCase):
         self.assertEqual(Decimal(t['net_profit']), Decimal('35000.00'))  # 40000-5000
         self.assertEqual(Decimal(t['received']) + Decimal(t['outstanding']),
                          Decimal(t['revenue']))
+
+
+# --------------------------------------------------------------------------
+# Invoice & salary-slip generator
+# --------------------------------------------------------------------------
+import uuid as _uuid
+
+from rest_framework.test import APIClient
+
+from .models import (
+    CompanyProfile, Employee, Invoice, SalarySlip,
+    compute_invoice_totals, compute_salary_totals,
+)
+
+
+def invoice_payload(**overrides):
+    data = {
+        'invoice_date': '2026-10-06',
+        'bill_to_name': 'Tanmy Sharma',
+        'bill_to_phone': '0300 1234567',
+        'origin': 'Lahore',
+        'destination': 'Karachi',
+        'transport_mode': 'road',
+        'items': [
+            {'description': 'Freight charges', 'quantity': '2', 'rate': '1500.00'},
+            {'description': 'Loading', 'unit': 'trip', 'quantity': '1', 'rate': '999.99'},
+        ],
+        'discount': '99.99',
+        'other_charges_label': 'Toll',
+        'other_charges': '100',
+        'tax_percent': '5',
+        'advance_amount': '1000',
+        'advance_date': '2026-10-06',
+        'balance_due_date': '2026-10-20',
+        'payment_method': 'cash',
+    }
+    data.update(overrides)
+    return data
+
+
+def slip_payload(**overrides):
+    data = {
+        'employee_name': 'Ali Raza',
+        'designation': 'Driver',
+        'pay_period_start': '2026-09-01',
+        'pay_period_end': '2026-09-30',
+        'pay_date': '2026-10-01',
+        'working_days': '26',
+        'days_present': '25',
+        'basic_salary': '50000',
+        'tax_percent': '2',
+        'lines': [
+            {'kind': 'earning', 'label': 'House rent', 'amount': '5000'},
+            {'kind': 'earning', 'label': 'Overtime', 'amount': '2500'},
+            {'kind': 'deduction', 'label': 'Advance recovery', 'amount': '1000'},
+        ],
+        'payment_status': 'paid',
+        'payment_method': 'bank',
+        'bank_name': 'Meezan Bank',
+        'bank_account_number': 'PK00MEZN0000000000000000',
+        'transaction_id': 'TXN-889',
+    }
+    data.update(overrides)
+    return data
+
+
+class DocumentCalculationTests(APITestCase):
+    def test_invoice_totals(self):
+        t = compute_invoice_totals(
+            [(2, Decimal('1500')), (1, Decimal('999.99'))],
+            discount=Decimal('99.99'), tax_percent=Decimal('5'),
+            other_charges=Decimal('100'), advance_amount=Decimal('1000'))
+        self.assertEqual(t['subtotal'], Decimal('3999.99'))
+        self.assertEqual(t['tax_amount'], Decimal('200.00'))
+        self.assertEqual(t['total_amount'], Decimal('4200.00'))
+        self.assertEqual(t['balance_due'], Decimal('3200.00'))
+
+    def test_invoice_rounding_half_up(self):
+        t = compute_invoice_totals([(Decimal('0.333'), Decimal('10.05'))])
+        self.assertEqual(t['subtotal'], Decimal('3.35'))  # 3.34665 -> 3.35
+
+    def test_salary_totals_percent_and_fixed_tax(self):
+        t = compute_salary_totals(Decimal('50000'), [Decimal('5000'), Decimal('2500')],
+                                  [Decimal('1000')], tax_percent=Decimal('2'))
+        self.assertEqual(t['gross_earnings'], Decimal('57500.00'))
+        self.assertEqual(t['tax_amount'], Decimal('1150.00'))
+        self.assertEqual(t['total_deductions'], Decimal('2150.00'))
+        self.assertEqual(t['net_pay'], Decimal('55350.00'))
+        fixed = compute_salary_totals(Decimal('30000'), [], [], tax_amount=Decimal('750'))
+        self.assertEqual(fixed['net_pay'], Decimal('29250.00'))
+
+
+class InvoiceApiTests(AuthenticatedAPITestCase):
+    url = '/api/finance/invoices/'
+
+    def create(self, **overrides):
+        res = self.client.post(self.url, invoice_payload(**overrides), format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+        return res.data
+
+    def test_create_computes_totals_and_numbers(self):
+        inv = self.create()
+        self.assertEqual(inv['invoice_number'], 'INV-2026-0001')
+        self.assertEqual(inv['subtotal'], '3999.99')
+        self.assertEqual(inv['tax_amount'], '200.00')
+        self.assertEqual(inv['total_amount'], '4200.00')
+        self.assertEqual(inv['amount_paid'], '1000.00')
+        self.assertEqual(inv['balance_due'], '3200.00')
+        self.assertEqual(inv['advance_date'], '2026-10-06')
+        self.assertEqual(inv['balance_due_date'], '2026-10-20')
+        self.assertEqual(inv['payment_status'], 'partial')
+        self.assertEqual([i['amount'] for i in inv['items']], ['3000.00', '999.99'])
+        self.assertTrue(inv['share_token'])
+        self.assertEqual(self.create()['invoice_number'], 'INV-2026-0002')
+
+    def test_client_totals_are_ignored(self):
+        inv = self.create(total_amount='1.00', balance_due='0', subtotal='5')
+        self.assertEqual(inv['total_amount'], '4200.00')
+        self.assertEqual(inv['balance_due'], '3200.00')
+
+    def test_custom_number_and_next_number(self):
+        self.create(invoice_number='SLI-7')
+        res = self.client.get(self.url + 'next_number/', {'date': '2026-01-01'})
+        self.assertEqual(res.data['number'], 'INV-2026-0001')
+        dup = self.client.post(self.url, invoice_payload(invoice_number='SLI-7'), format='json')
+        self.assertEqual(dup.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_validation(self):
+        cases = [
+            invoice_payload(items=[]),
+            invoice_payload(advance_date=None),             # advance without date
+            invoice_payload(advance_amount='5000'),          # more than total
+            invoice_payload(discount='100000'),              # negative total
+            invoice_payload(discount='-1'),
+            invoice_payload(bill_to_name=''),
+            invoice_payload(items=[{'description': 'x', 'quantity': '-1', 'rate': '10'}]),
+        ]
+        for payload in cases:
+            res = self.client.post(self.url, payload, format='json')
+            self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST, payload)
+        self.assertEqual(Invoice.objects.count(), 0)
+
+    def test_update_replaces_items_and_patch_recomputes(self):
+        inv = self.create()
+        res = self.client.put(self.url + f"{inv['id']}/", invoice_payload(
+            items=[{'description': 'Air freight', 'quantity': '1', 'rate': '10000'}],
+            discount='0', other_charges='0', tax_percent='0'), format='json')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(len(res.data['items']), 1)
+        self.assertEqual(res.data['invoice_number'], inv['invoice_number'])
+        self.assertEqual(res.data['balance_due'], '9000.00')
+        # PATCH without items: totals recomputed from the stored lines.
+        res = self.client.patch(self.url + f"{inv['id']}/", {
+            'amount_received': '9000', 'received_date': '2026-10-15',
+            'payment_method': 'bank', 'transaction_reference': 'IBFT-1'}, format='json')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(res.data['balance_due'], '0.00')
+        self.assertEqual(res.data['payment_status'], 'paid')
+
+    def test_status_and_search_filters(self):
+        self.create()                                                   # partial
+        self.create(advance_amount='0', advance_date=None,
+                    bill_to_name='Unpaid Co')                           # unpaid
+        self.create(advance_amount='4200', bill_to_name='Paid Co')      # paid
+        get = lambda **p: [i['bill_to_name'] for i in self.client.get(self.url, p).data]  # noqa: E731
+        self.assertEqual(get(status='paid'), ['Paid Co'])
+        self.assertEqual(get(status='unpaid'), ['Unpaid Co'])
+        self.assertEqual(get(status='partial'), ['Tanmy Sharma'])
+        self.assertEqual(get(search='unpaid'), ['Unpaid Co'])
+        self.assertEqual(len(get(**{'from': '2026-10-07'})), 0)
+
+    def test_does_not_touch_ledger_or_dashboard(self):
+        before = self.client.get('/api/finance/dashboard-summary/').data
+        self.create()
+        after = self.client.get('/api/finance/dashboard-summary/').data
+        self.assertEqual(before, after)
+        self.assertEqual(GeneralVoucher.objects.count(), 0)
+
+    def test_customer_can_still_be_deleted(self):
+        customer = Customer.objects.create(
+            name='Ali', sur_name='Khan', cnic='1', contact_number='0300',
+            address='Mall Road', city='Lahore')
+        inv = self.create(customer=customer.id)
+        res = self.client.delete(f'/api/finance/customers/{customer.id}/')
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        invoice = Invoice.objects.get(pk=inv['id'])
+        self.assertIsNone(invoice.customer)
+        self.assertEqual(invoice.bill_to_name, 'Tanmy Sharma')
+
+    def test_delete(self):
+        inv = self.create()
+        res = self.client.delete(self.url + f"{inv['id']}/")
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Invoice.objects.exists())
+
+    def test_requires_login(self):
+        anon = APIClient()
+        self.assertIn(anon.get(self.url).status_code, (401, 403))
+        self.assertIn(anon.post(self.url, invoice_payload(), format='json').status_code, (401, 403))
+        self.assertIn(anon.get('/api/finance/salary-slips/').status_code, (401, 403))
+        self.assertIn(anon.get('/api/finance/company-profile/').status_code, (401, 403))
+
+    def test_public_share_page(self):
+        inv = self.create()
+        anon = APIClient()
+        res = anon.get(f"/share/invoice/{inv['share_token']}/")
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'INV-2026-0001')
+        self.assertContains(res, 'doc-data')
+        self.assertEqual(anon.get(f'/share/invoice/{_uuid.uuid4()}/').status_code, 404)
+        self.assertEqual(anon.get(f"/share/invoice/{inv['id']}/").status_code, 404)
+
+
+class SalarySlipApiTests(AuthenticatedAPITestCase):
+    url = '/api/finance/salary-slips/'
+
+    def setUp(self):
+        super().setUp()
+        self.employee = Employee.objects.create(
+            name='Ali Raza', phone_number='03001234567', cnic='35202-1',
+            designation='Driver', salary=Decimal('50000'))
+
+    def create(self, **overrides):
+        res = self.client.post(self.url, slip_payload(**overrides), format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+        return res.data
+
+    def test_create_computes_net_pay(self):
+        slip = self.create(employee=self.employee.id)
+        self.assertEqual(slip['slip_number'], 'SAL-2026-0001')
+        self.assertEqual(slip['gross_earnings'], '57500.00')
+        self.assertEqual(slip['tax_amount'], '1150.00')
+        self.assertEqual(slip['total_deductions'], '2150.00')
+        self.assertEqual(slip['net_pay'], '55350.00')
+        self.assertEqual(slip['payment_method_display'], 'Bank Transfer')
+        self.assertEqual(slip['transaction_id'], 'TXN-889')
+        self.assertEqual(len(slip['lines']), 3)
+        self.assertEqual(self.create()['slip_number'], 'SAL-2026-0002')
+
+    def test_fixed_tax_and_no_lines(self):
+        slip = self.create(tax_percent='0', tax_amount='500', lines=[],
+                           payment_method='cash', transaction_id='')
+        self.assertEqual(slip['net_pay'], '49500.00')
+
+    def test_validation(self):
+        for payload in [
+            slip_payload(pay_period_end='2026-08-31'),
+            slip_payload(lines=[{'kind': 'deduction', 'label': 'x', 'amount': '999999'}]),
+            slip_payload(tax_percent='101'),
+            slip_payload(basic_salary='-1'),
+            slip_payload(lines=[{'kind': 'bonus', 'label': 'x', 'amount': '1'}]),
+            slip_payload(employee_name=''),
+        ]:
+            res = self.client.post(self.url, payload, format='json')
+            self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST, payload)
+
+    def test_update_lines_and_patch(self):
+        slip = self.create()
+        res = self.client.put(self.url + f"{slip['id']}/", slip_payload(lines=[]), format='json')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(res.data['lines'], [])
+        self.assertEqual(res.data['net_pay'], '49000.00')
+        res = self.client.patch(self.url + f"{slip['id']}/", {'payment_status': 'pending'}, format='json')
+        self.assertEqual(res.data['net_pay'], '49000.00')
+        self.assertEqual(res.data['payment_status'], 'pending')
+
+    def test_filters(self):
+        self.create(employee=self.employee.id)
+        self.create(employee_name='Bilal', payment_status='pending',
+                    pay_period_start='2026-08-01', pay_period_end='2026-08-31')
+        names = lambda **p: [s['employee_name'] for s in self.client.get(self.url, p).data]  # noqa: E731
+        self.assertEqual(names(employee=self.employee.id), ['Ali Raza'])
+        self.assertEqual(names(status='pending'), ['Bilal'])
+        self.assertEqual(names(**{'from': '2026-09-01'}), ['Ali Raza'])
+        self.assertEqual(names(search='bil'), ['Bilal'])
+
+    def test_employee_delete_keeps_slip(self):
+        slip = self.create(employee=self.employee.id)
+        res = self.client.delete(f'/api/finance/employees/{self.employee.id}/')
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        kept = SalarySlip.objects.get(pk=slip['id'])
+        self.assertIsNone(kept.employee)
+        self.assertEqual(kept.employee_name, 'Ali Raza')
+
+    def test_public_share_page(self):
+        slip = self.create()
+        res = APIClient().get(f"/share/salary-slip/{slip['share_token']}/")
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'SAL-2026-0001')
+
+
+class EmployeePayrollFieldsTests(AuthenticatedAPITestCase):
+    def test_old_payload_still_works_and_new_fields_roundtrip(self):
+        base = {'name': 'Sara', 'phone_number': '0300', 'cnic': '1',
+                'designation': 'Accountant', 'salary': '60000'}
+        res = self.client.post('/api/finance/employees/', base, format='json')
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(res.data['department'], '')
+        res = self.client.put(f"/api/finance/employees/{res.data['id']}/", dict(
+            base, employee_code='E-7', department='Finance', joining_date='2025-01-15',
+            bank_name='HBL', bank_account_title='Sara', bank_account_number='123'), format='json')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(res.data['joining_date'], '2025-01-15')
+        self.assertEqual(res.data['bank_account_number'], '123')
+
+
+class CompanyProfileTests(AuthenticatedAPITestCase):
+    url = '/api/finance/company-profile/'
+
+    def test_defaults_and_update_singleton(self):
+        res = self.client.get(self.url)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['name'], 'Syed Logistic')
+        res = self.client.put(self.url, {'bank_name': 'Meezan', 'bank_iban': 'PK36'}, format='json')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(res.data['bank_name'], 'Meezan')
+        self.assertEqual(res.data['name'], 'Syed Logistic')
+        self.client.put(self.url, {'phone': '042'}, format='json')
+        self.assertEqual(CompanyProfile.objects.count(), 1)
+        self.assertEqual(CompanyProfile.load().bank_iban, 'PK36')
+
+
+class DocumentPagesTests(APITestCase):
+    PAGES = ['/invoices/', '/invoices/new/', '/salary-slips/', '/salary-slips/new/']
+
+    def test_pages_require_login_and_render(self):
+        for path in self.PAGES:
+            self.assertEqual(self.client.get(path).status_code, 302, path)
+        user = User.objects.create_user(username='p@example.com', password='TestPass!482')
+        self.client.force_login(user)
+        for path in self.PAGES + ['/dashboard/', '/employees/']:
+            self.assertEqual(self.client.get(path).status_code, 200, path)
+        inv = Invoice.objects.create(invoice_date=date(2026, 10, 6), bill_to_name='X')
+        slip = SalarySlip.objects.create(
+            employee_name='Y', pay_period_start=date(2026, 9, 1), pay_period_end=date(2026, 9, 30))
+        res = self.client.get(f'/invoices/{inv.pk}/edit/')
+        self.assertContains(res, f'var invoiceId = {inv.pk};')
+        res = self.client.get(f'/salary-slips/{slip.pk}/edit/')
+        self.assertContains(res, f'var slipId = {slip.pk};')
+        self.assertContains(self.client.get('/invoices/new/'), 'var invoiceId = null;')
+        self.assertContains(self.client.get('/dashboard/'), '/salary-slips/new/')
+
+
+class ItemQuantityTests(AuthenticatedAPITestCase):
+    url = '/api/finance/items/'
+
+    def test_quantity_default_roundtrip_and_validation(self):
+        res = self.client.post(self.url, {'sku': 'Q-1', 'name': 'Pallet'}, format='json')
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(res.data['quantity'], 1)
+        res = self.client.put(self.url + f"{res.data['id']}/", {
+            'sku': 'Q-1', 'name': 'Pallet', 'quantity': 25}, format='json')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(Item.objects.get(sku='Q-1').quantity, 25)
+        for bad in (-1, 'abc', 1.5):
+            res = self.client.post(self.url, {'sku': f'Q-{bad}', 'name': 'x', 'quantity': bad}, format='json')
+            self.assertEqual(res.status_code, 400, bad)

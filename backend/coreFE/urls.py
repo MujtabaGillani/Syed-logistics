@@ -7,6 +7,8 @@ from .views import (
     CustomClearanceView, WarehouseView, LogisticSolView, SupplyChainView,
     DashboardView, CustomersView, GeneralVouchersView, OfficeExpensesView,
     SaleOrdersView, ItemsView, ShipmentsView, EmployeesView,
+    InvoicesView, InvoiceEditorView, SalarySlipsView, SalarySlipEditorView,
+    shared_invoice, shared_salary_slip,
     dashboard_login, dashboard_logout, dashboard_signup, health_check
 )
 
@@ -43,6 +45,15 @@ urlpatterns = [
     path('shipments/', ShipmentsView.as_view(), name='shipments'),
     path('employees/', EmployeesView.as_view(), name='employees'),
     path('items/', ItemsView.as_view(), name='items'),
+    path('invoices/', InvoicesView.as_view(), name='invoices'),
+    path('invoices/new/', InvoiceEditorView.as_view(), name='invoice_new'),
+    path('invoices/<int:pk>/edit/', InvoiceEditorView.as_view(), name='invoice_edit'),
+    path('salary-slips/', SalarySlipsView.as_view(), name='salary_slips'),
+    path('salary-slips/new/', SalarySlipEditorView.as_view(), name='salary_slip_new'),
+    path('salary-slips/<int:pk>/edit/', SalarySlipEditorView.as_view(), name='salary_slip_edit'),
+    # Public share links (unguessable token) sent to customers / employees.
+    path('share/invoice/<uuid:token>/', shared_invoice, name='shared_invoice'),
+    path('share/salary-slip/<uuid:token>/', shared_salary_slip, name='shared_salary_slip'),
     path('account/login/', dashboard_login, name='dashboard_login'),
     path('account/signup/', dashboard_signup, name='dashboard_signup'),
     path('account/logout/', dashboard_logout, name='dashboard_logout'),

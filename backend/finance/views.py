@@ -38,6 +38,7 @@ from . import exports, imports
 from .models import (
     Customer, GeneralVoucher, OfficeExpense, Payment,
     Item, SaleOrder, Shipment, ShipmentImage, Employee,
+    CompanyProfile, Invoice, SalarySlip, next_document_number,
 )
 from .serializers import (
     CustomerSerializer,
@@ -50,6 +51,9 @@ from .serializers import (
     SaleOrderUpdateSerializer,
     ShipmentSerializer,
     EmployeeSerializer,
+    CompanyProfileSerializer,
+    InvoiceSerializer,
+    SalarySlipSerializer,
 )
 
 PAID_TOTAL = Coalesce(Sum('payments__amount'), Value(
@@ -797,3 +801,121 @@ class DashboardSummaryView(APIView):
             'monthly': series,
             'expense_breakdown': breakdown,
         })
+
+
+# --------------------------------------------------------------------------
+# Printable documents: company profile, invoices, salary slips
+# --------------------------------------------------------------------------
+class CompanyProfileView(APIView):
+    """GET / PUT the single company profile (letterhead + bank details) that
+    is printed on invoices and salary slips."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(CompanyProfileSerializer(CompanyProfile.load()).data)
+
+    def put(self, request):
+        ser = CompanyProfileSerializer(
+            CompanyProfile.load(), data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)
+
+    patch = put
+
+
+class InvoiceViewSet(AuthenticatedModelViewSet):
+    """Customer invoices (form -> preview -> PDF / WhatsApp).
+
+    Filters: ?from=&to= (invoice date), ?status=paid|partial|unpaid,
+    ?customer=<id>, ?search=<number, name, phone, tracking no.>
+    """
+
+    queryset = Invoice.objects.select_related(
+        'customer', 'shipment', 'sale_order').prefetch_related('items')
+    serializer_class = InvoiceSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        date_from = _parse_date(params.get('from'))
+        date_to = _parse_date(params.get('to'))
+        if date_from:
+            qs = qs.filter(invoice_date__gte=date_from)
+        if date_to:
+            qs = qs.filter(invoice_date__lte=date_to)
+        customer = params.get('customer')
+        if customer:
+            qs = qs.filter(customer_id=customer)
+
+        status_f = (params.get('status') or '').lower()
+        nothing_paid = dj_models.Q(advance_amount=0, amount_received=0)
+        fully_paid = dj_models.Q(total_amount__gt=0, balance_due__lte=0)
+        if status_f == 'paid':
+            qs = qs.filter(fully_paid)
+        elif status_f == 'unpaid':
+            qs = qs.filter(nothing_paid).exclude(fully_paid)
+        elif status_f == 'partial':
+            qs = qs.exclude(fully_paid).exclude(nothing_paid)
+
+        search = params.get('search')
+        if search:
+            qs = qs.filter(
+                dj_models.Q(invoice_number__icontains=search)
+                | dj_models.Q(bill_to_name__icontains=search)
+                | dj_models.Q(bill_to_company__icontains=search)
+                | dj_models.Q(bill_to_phone__icontains=search)
+                | dj_models.Q(tracking_number__icontains=search)
+                | dj_models.Q(reference_number__icontains=search))
+        return qs
+
+    @action(detail=False, methods=['get'])
+    def next_number(self, request):
+        year = (_parse_date(request.query_params.get('date'))
+                or date.today()).year
+        return Response({'number': next_document_number(
+            Invoice, 'invoice_number', f'INV-{year}-')})
+
+
+class SalarySlipViewSet(AuthenticatedModelViewSet):
+    """Employee salary slips.
+
+    Filters: ?from=&to= (pay period start), ?employee=<id>,
+    ?status=pending|paid, ?search=<slip no., name, CNIC, designation>
+    """
+
+    queryset = SalarySlip.objects.select_related('employee')\
+        .prefetch_related('lines')
+    serializer_class = SalarySlipSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        date_from = _parse_date(params.get('from'))
+        date_to = _parse_date(params.get('to'))
+        if date_from:
+            qs = qs.filter(pay_period_start__gte=date_from)
+        if date_to:
+            qs = qs.filter(pay_period_start__lte=date_to)
+        employee = params.get('employee')
+        if employee:
+            qs = qs.filter(employee_id=employee)
+        status_f = params.get('status')
+        if status_f:
+            qs = qs.filter(payment_status=status_f)
+        search = params.get('search')
+        if search:
+            qs = qs.filter(
+                dj_models.Q(slip_number__icontains=search)
+                | dj_models.Q(employee_name__icontains=search)
+                | dj_models.Q(cnic__icontains=search)
+                | dj_models.Q(designation__icontains=search))
+        return qs
+
+    @action(detail=False, methods=['get'])
+    def next_number(self, request):
+        year = (_parse_date(request.query_params.get('date'))
+                or date.today()).year
+        return Response({'number': next_document_number(
+            SalarySlip, 'slip_number', f'SAL-{year}-')})

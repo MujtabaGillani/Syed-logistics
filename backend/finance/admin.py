@@ -4,6 +4,7 @@ from .models import (
     Customer, GeneralVoucher, OfficeExpense, Payment,
     Item, SaleOrder, SaleOrderItem,
     Shipment, ShipmentItem, ShipmentImage, Employee,
+    CompanyProfile, Invoice, InvoiceItem, SalarySlip, SalarySlipLine,
 )
 
 
@@ -67,7 +68,8 @@ class OfficeExpenseAdmin(admin.ModelAdmin):
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ('sku', 'name', 'weight_kg', 'amount', 'is_active')
+    list_display = ('sku', 'name', 'weight_kg', 'amount', 'quantity',
+                    'is_active')
     list_filter = ('is_active',)
     search_fields = ('sku', 'name')
     list_per_page = 25
@@ -112,3 +114,49 @@ class ShipmentAdmin(admin.ModelAdmin):
     filter_horizontal = ('customers',)
     inlines = [ShipmentItemInline, ShipmentImageInline]
     list_per_page = 25
+
+
+class InvoiceItemInline(admin.TabularInline):
+    model = InvoiceItem
+    extra = 0
+
+
+@admin.register(Invoice)
+class InvoiceAdmin(admin.ModelAdmin):
+    list_display = ('invoice_number', 'invoice_date', 'bill_to_name',
+                    'total_amount', 'advance_amount', 'balance_due',
+                    'balance_due_date')
+    list_filter = ('invoice_date', 'transport_mode', 'payment_method')
+    search_fields = ('invoice_number', 'bill_to_name', 'bill_to_phone',
+                     'tracking_number')
+    readonly_fields = ('share_token', 'subtotal', 'tax_amount',
+                       'total_amount', 'balance_due')
+    inlines = [InvoiceItemInline]
+    list_per_page = 25
+
+
+class SalarySlipLineInline(admin.TabularInline):
+    model = SalarySlipLine
+    extra = 0
+
+
+@admin.register(SalarySlip)
+class SalarySlipAdmin(admin.ModelAdmin):
+    list_display = ('slip_number', 'employee_name', 'pay_period_start',
+                    'pay_period_end', 'net_pay', 'payment_status',
+                    'payment_method')
+    list_filter = ('payment_status', 'payment_method', 'pay_period_start')
+    search_fields = ('slip_number', 'employee_name', 'cnic')
+    readonly_fields = ('share_token', 'gross_earnings', 'total_deductions',
+                       'net_pay')
+    inlines = [SalarySlipLineInline]
+    list_per_page = 25
+
+
+@admin.register(CompanyProfile)
+class CompanyProfileAdmin(admin.ModelAdmin):
+    def has_add_permission(self, request):
+        return not CompanyProfile.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False

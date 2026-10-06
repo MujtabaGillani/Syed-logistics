@@ -1,0 +1,676 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Invoice Workspace - Syed Logistic{% endblock %}
+{% block meta_robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/finance.css' %}" rel="stylesheet">
+<link href="{% static 'css/documents.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="fin-wrap doc-workspace">
+    <div class="container-xxl px-lg-4">
+        <div class="fin-page-head">
+            <div>
+                <h1 id="pageTitle">Invoice Workspace</h1>
+                <div class="text-muted">Fill in the details on the left - the invoice on the right updates as you type. Save, download as PDF or send on WhatsApp.</div>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/invoices/" class="btn btn-outline-secondary"><i class="fa fa-list me-2"></i>All Invoices</a>
+                <button type="button" class="btn btn-outline-secondary" id="btnCompany"><i class="fa fa-building me-2"></i>Company Details</button>
+                <a href="/invoices/new/" class="btn btn-primary"><i class="fa fa-plus me-2"></i>New Invoice</a>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-xl-6">
+                <form class="fin-card" id="invForm" novalidate autocomplete="off">
+                    <div class="doc-form-section">
+                        <h6><span><i class="fa fa-file-invoice"></i>Invoice details</span></h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Invoice number</label>
+                                <input class="form-control" name="invoice_number" id="fNumber" placeholder="Auto">
+                                <div class="form-text">Leave blank to auto-number (INV-YYYY-0001).</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Invoice date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" name="invoice_date" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Due date</label>
+                                <input type="date" class="form-control" name="due_date">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Reference / PO / booking no.</label>
+                                <input class="form-control" name="reference_number" placeholder="Order or booking reference">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-form-section">
+                        <h6><span><i class="fa fa-user"></i>Customer (Bill to)</span></h6>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">Pick an existing customer (optional)</label>
+                                <select class="form-select" name="customer" id="fCustomer"><option value="">- Walk-in / new customer -</option></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Customer name <span class="text-danger">*</span></label>
+                                <input class="form-control" name="bill_to_name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Company / business</label>
+                                <input class="form-control" name="bill_to_company">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Phone / WhatsApp</label>
+                                <input class="form-control" name="bill_to_phone" placeholder="0300 1234567">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" name="bill_to_email">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">CNIC / NTN</label>
+                                <input class="form-control" name="bill_to_cnic">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Billing address</label>
+                                <textarea class="form-control" rows="2" name="bill_to_address"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-form-section">
+                        <h6>
+                            <span><i class="fa fa-map-marker-alt"></i>Ship to / Consignee</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnCopyBill"><i class="fa fa-copy me-1"></i>Same as bill to</button>
+                        </h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Consignee name</label>
+                                <input class="form-control" name="ship_to_name">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Consignee phone</label>
+                                <input class="form-control" name="ship_to_phone">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Delivery address</label>
+                                <textarea class="form-control" rows="2" name="ship_to_address"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-form-section">
+                        <h6><span><i class="fa fa-truck"></i>Shipment details</span></h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Link a shipment (optional)</label>
+                                <select class="form-select" name="shipment" id="fShipment"><option value="">- None -</option></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Load lines from a sale order (optional)</label>
+                                <select class="form-select" name="sale_order" id="fSaleOrder"><option value="">- None -</option></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Bilty / AWB / B/L / CN no.</label>
+                                <input class="form-control" name="tracking_number">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Mode of transport</label>
+                                <select class="form-select" name="transport_mode">
+                                    <option value="">Not specified</option>
+                                    <option value="road">Road Freight</option>
+                                    <option value="air">Air Freight</option>
+                                    <option value="sea">Sea Freight</option>
+                                    <option value="rail">Rail Freight</option>
+                                    <option value="courier">Courier</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Origin</label>
+                                <input class="form-control" name="origin" placeholder="e.g. Lahore">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Destination</label>
+                                <input class="form-control" name="destination" placeholder="e.g. Karachi">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Service type</label>
+                                <input class="form-control" name="service_type" list="serviceTypes" placeholder="Door to door">
+                                <datalist id="serviceTypes">
+                                    <option value="Door to door"><option value="Port to port"><option value="Door to port">
+                                    <option value="FCL"><option value="LCL"><option value="FTL"><option value="LTL">
+                                    <option value="Express"><option value="Customs clearance"><option value="Warehousing">
+                                </datalist>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Vehicle / container no.</label>
+                                <input class="form-control" name="vehicle_number">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">No. of packages</label>
+                                <input type="number" min="0" step="1" class="form-control" name="packages">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Total weight (kg)</label>
+                                <input type="number" min="0" step="0.001" class="form-control" name="total_weight_kg">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Volume (CBM)</label>
+                                <input type="number" min="0" step="0.001" class="form-control" name="volume_cbm">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Pickup date</label>
+                                <input type="date" class="form-control" name="pickup_date">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Delivery date</label>
+                                <input type="date" class="form-control" name="delivery_date">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-form-section">
+                        <h6>
+                            <span><i class="fa fa-list-ul"></i>Charges / items</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddLine"><i class="fa fa-plus me-1"></i>Add line</button>
+                        </h6>
+                        <div class="doc-lines-head">
+                            <span>Description</span><span>Unit</span><span>Weight kg</span><span>Qty</span><span>Rate</span><span class="text-end">Amount</span><span></span>
+                        </div>
+                        <div id="lines"></div>
+                        <datalist id="itemCatalog"></datalist>
+                        <div class="form-text">Type to pick from your <a href="/items/" target="_blank">item catalogue</a> - rate and weight fill in automatically.</div>
+                    </div>
+
+                    <div class="doc-form-section">
+                        <h6><span><i class="fa fa-percent"></i>Discount, extra charges &amp; tax</span></h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Discount (Rs)</label>
+                                <input type="number" min="0" step="0.01" class="form-control" name="discount" value="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Tax / GST (%)</label>
+                                <input type="number" min="0" max="100" step="0.01" class="form-control" name="tax_percent" value="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Other charges - label</label>
+                                <input class="form-control" name="other_charges_label" list="chargeLabels" placeholder="e.g. Loading / unloading">
+                                <datalist id="chargeLabels">
+                                    <option value="Loading / unloading"><option value="Fuel surcharge"><option value="Customs duty">
+                                    <option value="Toll / octroi"><option value="Insurance"><option value="Packing"><option value="Delivery charges">
+                                </datalist>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Other charges (Rs)</label>
+                                <input type="number" min="0" step="0.01" class="form-control" name="other_charges" value="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-form-section">
+                        <h6><span><i class="fa fa-money-bill-wave"></i>Payment &amp; schedule</span></h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Advance paid (Rs)</label>
+                                <input type="number" min="0" step="0.01" class="form-control" name="advance_amount" value="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Advance paid on</label>
+                                <input type="date" class="form-control" name="advance_date">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Further amount received (Rs)</label>
+                                <input type="number" min="0" step="0.01" class="form-control" name="amount_received" value="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Received on</label>
+                                <input type="date" class="form-control" name="received_date">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Remaining balance (Rs)</label>
+                                <input class="form-control doc-readonly" id="fBalance" readonly tabindex="-1">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Remaining payment date (agreed)</label>
+                                <input type="date" class="form-control" name="balance_due_date">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Paid by</label>
+                                <select class="form-select" name="payment_method" id="fMethod">
+                                    <option value="">Not specified</option>
+                                    <option value="cash">Cash</option>
+                                    <option value="bank">Bank Transfer</option>
+                                    <option value="cheque">Cheque</option>
+                                    <option value="online">Online (JazzCash / Easypaisa)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Transaction ID / cheque no. <small class="text-muted">(optional)</small></label>
+                                <input class="form-control" name="transaction_reference">
+                            </div>
+                            <div class="col-md-4 js-bank">
+                                <label class="form-label">Customer's bank</label>
+                                <input class="form-control" name="payment_bank_name">
+                            </div>
+                            <div class="col-md-4 js-bank">
+                                <label class="form-label">Account title</label>
+                                <input class="form-control" name="payment_account_title">
+                            </div>
+                            <div class="col-md-4 js-bank">
+                                <label class="form-label">Account no. / IBAN</label>
+                                <input class="form-control" name="payment_account_number">
+                            </div>
+                        </div>
+                        <div class="doc-sum-strip" id="sumStrip"></div>
+                    </div>
+
+                    <div class="doc-form-section">
+                        <h6><span><i class="fa fa-sticky-note"></i>Notes &amp; terms</span></h6>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">Notes</label>
+                                <textarea class="form-control" rows="2" name="notes"></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Terms &amp; conditions</label>
+                                <textarea class="form-control" rows="3" name="terms"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="doc-actions">
+                        <button type="submit" class="btn btn-outline-primary" id="btnSave"><i class="fa fa-save me-2"></i>Save invoice</button>
+                        <button type="button" class="btn btn-primary" id="btnPdf"><i class="fa fa-file-pdf me-2"></i>Download PDF</button>
+                        <button type="button" class="btn btn-whatsapp" id="btnShare"><i class="fab fa-whatsapp me-2"></i>Send on WhatsApp</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="col-xl-6">
+                <div class="doc-preview-col">
+                    <div class="doc-preview-shell">
+                        <div class="doc-preview-bar">
+                            <span><i class="fa fa-eye me-1"></i>Live preview (A4)</span>
+                            <span id="saveState" class="text-muted">Not saved yet</span>
+                        </div>
+                        <div class="doc-stage" id="docStage"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/finance.js' %}"></script>
+<script src="{% static 'js/documents.js' %}"></script>
+<script>
+(function () {
+    var F = window.Finance, D = window.Docs;
+    D.setLogo('{% static "img/logo.svg" %}');
+
+    var invoiceId = {{ view.kwargs.pk|default:"null" }};
+    var form = document.getElementById('invForm');
+    var linesEl = document.getElementById('lines');
+    var preview = D.mountPreview(document.getElementById('docStage'));
+    var state = { company: {}, nextNumber: '', shareToken: null, catalog: [], customers: [] };
+
+    var TEXT_FIELDS = ['invoice_number', 'invoice_date', 'due_date', 'reference_number',
+        'customer', 'bill_to_name', 'bill_to_company', 'bill_to_phone', 'bill_to_email', 'bill_to_cnic',
+        'bill_to_address', 'ship_to_name', 'ship_to_phone', 'ship_to_address',
+        'shipment', 'sale_order', 'tracking_number', 'transport_mode', 'service_type', 'origin',
+        'destination', 'vehicle_number', 'packages', 'total_weight_kg', 'volume_cbm', 'pickup_date',
+        'delivery_date', 'discount', 'other_charges_label', 'other_charges', 'tax_percent',
+        'advance_amount', 'advance_date', 'amount_received', 'received_date', 'balance_due_date',
+        'payment_method', 'payment_bank_name', 'payment_account_title', 'payment_account_number',
+        'transaction_reference', 'notes', 'terms'];
+    var NULLABLE = ['due_date', 'customer', 'shipment', 'sale_order', 'packages', 'total_weight_kg',
+        'volume_cbm', 'pickup_date', 'delivery_date', 'advance_date', 'received_date', 'balance_due_date'];
+    var ZERO_DEFAULT = ['discount', 'other_charges', 'tax_percent', 'advance_amount', 'amount_received'];
+
+    function field(name) { return form.elements[name]; }
+    function val(name) { return (field(name).value || '').trim(); }
+    function setVal(name, v) { field(name).value = v == null ? '' : v; }
+
+    // ---------------------------------------------------------------- lines
+    function addLine(line) {
+        line = line || {};
+        var row = document.createElement('div');
+        row.className = 'doc-line';
+        row.dataset.item = line.item || '';
+        row.innerHTML =
+            '<input class="form-control line-desc" list="itemCatalog" placeholder="e.g. Freight charges Lahore → Karachi">'
+            + '<input class="form-control line-unit" placeholder="Unit" list="unitList">'
+            + '<input type="number" min="0" step="0.001" class="form-control line-weight" placeholder="kg">'
+            + '<input type="number" min="0" step="0.001" class="form-control line-qty" value="1">'
+            + '<input type="number" min="0" step="0.01" class="form-control line-rate" placeholder="0.00">'
+            + '<input class="form-control line-amount doc-readonly" readonly tabindex="-1">'
+            + '<button type="button" class="btn btn-outline-danger doc-icon-btn line-remove" title="Remove line"><i class="fa fa-times"></i></button>';
+        row.querySelector('.line-desc').value = line.description || '';
+        row.querySelector('.line-unit').value = line.unit || '';
+        row.querySelector('.line-weight').value = line.weight_kg != null && Number(line.weight_kg) ? Number(line.weight_kg) : '';
+        row.querySelector('.line-qty').value = line.quantity != null ? Number(line.quantity) : 1;
+        row.querySelector('.line-rate').value = line.rate != null && line.rate !== '' ? line.rate : '';
+        linesEl.appendChild(row);
+        return row;
+    }
+
+    function readLines() {
+        return Array.prototype.map.call(linesEl.querySelectorAll('.doc-line'), function (row) {
+            return {
+                item: row.dataset.item ? Number(row.dataset.item) : null,
+                description: row.querySelector('.line-desc').value.trim(),
+                unit: row.querySelector('.line-unit').value.trim(),
+                weight_kg: row.querySelector('.line-weight').value || null,
+                quantity: row.querySelector('.line-qty').value || '0',
+                rate: row.querySelector('.line-rate').value || '0'
+            };
+        });
+    }
+
+    function setLines(lines) {
+        linesEl.innerHTML = '';
+        (lines && lines.length ? lines : [{}]).forEach(addLine);
+    }
+
+    function hasRealLines() {
+        return readLines().some(function (l) { return l.description || Number(l.rate); });
+    }
+
+    linesEl.addEventListener('click', function (ev) {
+        var btn = ev.target.closest('.line-remove');
+        if (!btn) { return; }
+        btn.closest('.doc-line').remove();
+        if (!linesEl.children.length) { addLine(); }
+        refresh();
+    });
+    linesEl.addEventListener('change', function (ev) {
+        if (!ev.target.classList.contains('line-desc')) { return; }
+        var row = ev.target.closest('.doc-line');
+        var match = state.catalog.filter(function (it) { return it.name === ev.target.value; })[0];
+        row.dataset.item = match ? match.id : '';
+        if (match) {
+            var rate = row.querySelector('.line-rate');
+            var weight = row.querySelector('.line-weight');
+            var qty = row.querySelector('.line-qty');
+            if (!Number(rate.value)) { rate.value = match.amount; }
+            if (Number(qty.value) <= 1 && match.quantity > 1) { qty.value = match.quantity; }
+            if (!Number(weight.value) && Number(match.weight_kg)) { weight.value = Number(match.weight_kg); }
+            refresh();
+        }
+    });
+    document.getElementById('btnAddLine').addEventListener('click', function () {
+        addLine().querySelector('.line-desc').focus();
+    });
+
+    // -------------------------------------------------------------- refresh
+    function readForm() {
+        var d = {};
+        TEXT_FIELDS.forEach(function (n) { d[n] = val(n); });
+        d.items = readLines();
+        d.share_token = state.shareToken;
+        return d;
+    }
+
+    function previewData() {
+        var d = readForm();
+        d.invoice_number = d.invoice_number || state.nextNumber;
+        return d;
+    }
+
+    function refresh() {
+        var d = readForm();
+        var t = D.calcInvoice(d);
+        Array.prototype.forEach.call(linesEl.querySelectorAll('.doc-line'), function (row) {
+            var q = D.num(row.querySelector('.line-qty').value), r = D.num(row.querySelector('.line-rate').value);
+            row.querySelector('.line-amount').value = D.round2(q * r).toFixed(2);
+        });
+        document.getElementById('fBalance').value = D.money(t.balance_due);
+        document.getElementById('sumStrip').innerHTML =
+            '<div><small>Total</small><strong>' + D.money(t.total_amount) + '</strong></div>'
+            + '<div><small>Paid so far</small><strong>' + D.money(t.amount_paid) + '</strong></div>'
+            + '<div class="' + (t.balance_due > 0 ? 'is-due' : '') + '"><small>Remaining</small><strong>'
+            + D.money(t.balance_due) + '</strong></div>';
+        var bank = ['bank', 'cheque', 'online'].indexOf(val('payment_method')) !== -1;
+        Array.prototype.forEach.call(form.querySelectorAll('.js-bank'), function (el) {
+            el.style.display = bank ? '' : 'none';
+        });
+        preview.update(D.render('invoice', previewData(), state.company));
+    }
+
+    var timer;
+    form.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(refresh, 120); });
+    form.addEventListener('change', refresh);
+
+    // ------------------------------------------------------ prefill helpers
+    function option(value, label) {
+        var o = document.createElement('option');
+        o.value = value;
+        o.textContent = label;
+        return o;
+    }
+
+    function fillFromCustomer(c) {
+        setVal('bill_to_name', c.full_name);
+        setVal('bill_to_phone', c.contact_number);
+        setVal('bill_to_email', c.email || '');
+        setVal('bill_to_cnic', c.cnic);
+        setVal('bill_to_address', [c.address, c.city].filter(Boolean).join(', '));
+    }
+
+    function loadSaleOrders(customerId) {
+        var sel = document.getElementById('fSaleOrder');
+        var keep = sel.value;
+        return F.get('sale-orders/', customerId ? { customer: customerId } : null).then(function (orders) {
+            sel.innerHTML = '';
+            sel.appendChild(option('', '- None -'));
+            (orders || []).forEach(function (o) {
+                sel.appendChild(option(o.id, o.invoice_number + ' · ' + o.customer_name + ' · ' + F.money(o.total_amount)));
+            });
+            sel.value = keep;
+        });
+    }
+
+    document.getElementById('fCustomer').addEventListener('change', function (ev) {
+        var id = ev.target.value;
+        if (id) {
+            var c = state.customers.filter(function (x) { return String(x.id) === id; })[0];
+            if (c) { fillFromCustomer(c); }
+        }
+        loadSaleOrders(id);
+        refresh();
+    });
+
+    document.getElementById('fShipment').addEventListener('change', function (ev) {
+        if (!ev.target.value) { return; }
+        F.get('shipments/' + ev.target.value + '/').then(function (s) {
+            if (!val('tracking_number')) { setVal('tracking_number', s.shipment_id); }
+            if (!val('pickup_date')) { setVal('pickup_date', s.shipment_date); }
+            var pkgs = (s.items || []).reduce(function (n, it) { return n + (it.quantity || 0); }, 0);
+            if (pkgs && !val('packages')) { setVal('packages', pkgs); }
+            if (Number(s.total_weight) && !val('total_weight_kg')) { setVal('total_weight_kg', Number(s.total_weight)); }
+            refresh();
+        });
+    });
+
+    document.getElementById('fSaleOrder').addEventListener('change', function (ev) {
+        if (!ev.target.value) { return; }
+        F.get('sale-orders/' + ev.target.value + '/').then(function (o) {
+            if (hasRealLines() && !confirm('Replace the current lines with the items from sale order ' + o.invoice_number + '?')) {
+                return;
+            }
+            setLines((o.items || []).map(function (it) {
+                return { item: it.item, description: it.name, weight_kg: it.weight_kg, quantity: 1, rate: it.amount };
+            }));
+            if (!val('reference_number')) { setVal('reference_number', o.invoice_number); }
+            if (!val('customer')) {
+                setVal('customer', o.customer);
+                var c = state.customers.filter(function (x) { return x.id === o.customer; })[0];
+                if (c) { fillFromCustomer(c); }
+            }
+            if (o.shipment && !val('shipment')) {
+                setVal('shipment', o.shipment);
+                field('shipment').dispatchEvent(new Event('change'));
+            }
+            refresh();
+        });
+    });
+
+    document.getElementById('btnCopyBill').addEventListener('click', function () {
+        setVal('ship_to_name', val('bill_to_name'));
+        setVal('ship_to_phone', val('bill_to_phone'));
+        setVal('ship_to_address', val('bill_to_address'));
+        refresh();
+    });
+
+    document.getElementById('btnCompany').addEventListener('click', function () {
+        D.editCompany(function (c) { state.company = c; refresh(); });
+    });
+
+    // ----------------------------------------------------------------- save
+    function payload() {
+        var d = readForm();
+        var out = {};
+        TEXT_FIELDS.forEach(function (n) {
+            var v = d[n];
+            if (v === '' && NULLABLE.indexOf(n) !== -1) { v = null; }
+            if (v === '' && ZERO_DEFAULT.indexOf(n) !== -1) { v = '0'; }
+            out[n] = v;
+        });
+        if (!out.invoice_number) { delete out.invoice_number; }
+        out.items = d.items.filter(function (l) { return l.description || Number(l.rate); });
+        return out;
+    }
+
+    function validate() {
+        var problems = [];
+        if (!val('bill_to_name')) { problems.push('customer name'); }
+        if (!val('invoice_date')) { problems.push('invoice date'); }
+        var lines = payload().items;
+        if (!lines.length) { problems.push('at least one charge line'); }
+        if (lines.some(function (l) { return !l.description; })) { problems.push('a description on every line'); }
+        if (Number(val('advance_amount')) > 0 && !val('advance_date')) { problems.push('the date the advance was paid'); }
+        if (problems.length) {
+            F.toast('Please add ' + problems.join(', ') + '.', 'warning');
+            return false;
+        }
+        return true;
+    }
+
+    function applySaved(inv) {
+        invoiceId = inv.id;
+        state.shareToken = inv.share_token;
+        setVal('invoice_number', inv.invoice_number);
+        document.getElementById('pageTitle').textContent = 'Invoice ' + inv.invoice_number;
+        document.getElementById('saveState').textContent = 'Saved · ' + new Date().toLocaleTimeString();
+        if (window.location.pathname !== '/invoices/' + inv.id + '/edit/') {
+            window.history.replaceState(null, '', '/invoices/' + inv.id + '/edit/');
+        }
+        refresh();
+    }
+
+    function save() {
+        if (!validate()) { return Promise.reject(null); }
+        var btn = document.getElementById('btnSave');
+        btn.disabled = true;
+        var op = invoiceId ? F.put('invoices/' + invoiceId + '/', payload()) : F.post('invoices/', payload());
+        return op.then(function (inv) {
+            applySaved(inv);
+            return inv;
+        }).catch(function (err) {
+            F.toast(D.errorText(err), 'danger');
+            throw null;
+        }).finally(function () { btn.disabled = false; });
+    }
+
+    form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        save().then(function () { F.toast('Invoice saved.'); }).catch(function () {});
+    });
+
+    document.getElementById('btnPdf').addEventListener('click', function () {
+        var btn = this;
+        btn.disabled = true;
+        D.downloadPdf('invoice', previewData(), state.company)
+            .catch(function (err) { F.toast((err && err.message) || 'Could not create the PDF.', 'danger'); })
+            .finally(function () { btn.disabled = false; });
+    });
+
+    document.getElementById('btnShare').addEventListener('click', function () {
+        // Save first so the message carries the final number and a share link.
+        save().then(function (inv) {
+            D.openShare({ kind: 'invoice', data: inv, company: state.company,
+                          phone: inv.bill_to_phone || inv.ship_to_phone });
+        }).catch(function () {});
+    });
+
+    // ----------------------------------------------------------------- boot
+    function loadLookups() {
+        var cust = F.get('customers/').then(function (list) {
+            state.customers = list || [];
+            var sel = document.getElementById('fCustomer');
+            state.customers.forEach(function (c) {
+                sel.appendChild(option(c.id, c.full_name + (c.contact_number ? ' · ' + c.contact_number : '')));
+            });
+        });
+        var ship = F.get('shipments/options_list/').then(function (list) {
+            var sel = document.getElementById('fShipment');
+            (list || []).forEach(function (s) { sel.appendChild(option(s.id, s.shipment_id)); });
+        });
+        var items = F.get('items/').then(function (list) {
+            state.catalog = (list || []).filter(function (it) { return it.is_active !== false; });
+            document.getElementById('itemCatalog').innerHTML = state.catalog.map(function (it) {
+                return '<option value="' + F.escapeHtml(it.name) + '">' + F.escapeHtml(it.sku + ' · ' + F.money(it.amount)) + '</option>';
+            }).join('');
+        });
+        var units = document.createElement('datalist');
+        units.id = 'unitList';
+        units.innerHTML = ['kg', 'ton', 'pcs', 'carton', 'pallet', 'bag', 'trip', 'container', 'CBM', 'km']
+            .map(function (u) { return '<option value="' + u + '">'; }).join('');
+        document.body.appendChild(units);
+        return Promise.all([cust, ship, items, loadSaleOrders(null)]).catch(function () {
+            F.toast('Some lists (customers / shipments / items) could not be loaded.', 'warning');
+        });
+    }
+
+    function fillInvoice(inv) {
+        TEXT_FIELDS.forEach(function (n) { setVal(n, inv[n]); });
+        setLines(inv.items);
+        applySaved(inv);
+    }
+
+    Promise.all([
+        D.loadCompany().then(function (c) { state.company = c; }).catch(function () {}),
+        loadLookups()
+    ]).then(function () {
+        if (invoiceId) {
+            return F.get('invoices/' + invoiceId + '/').then(fillInvoice).catch(function () {
+                F.toast('Invoice not found.', 'danger');
+            });
+        }
+        setVal('invoice_date', D.isoDate(new Date()));
+        setVal('notes', state.company.invoice_notes || '');
+        setVal('terms', state.company.invoice_terms || '');
+        setLines([]);
+        refresh();
+        return F.get('invoices/next_number/', { date: val('invoice_date') }).then(function (r) {
+            state.nextNumber = r.number;
+            document.getElementById('fNumber').placeholder = r.number + ' (auto)';
+            refresh();
+        });
+    });
+
+    setLines([]);
+    refresh();
+})();
+</script>
+{% endblock %}
